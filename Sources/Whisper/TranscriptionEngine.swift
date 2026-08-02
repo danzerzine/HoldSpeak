@@ -16,13 +16,9 @@ public final class TranscriptionEngine {
     // Tuning constants (exposed as `private static` for easy adjustment).
     private static let codeSwitchDeltaThreshold: Float = 0.25
     private static let codeSwitchMinProb: Float = 0.15
-    private static let vadWindowSamples: Int = 480        // 30 ms at 16 kHz
-    private static let vadFloor: Float = 0.0008
-    private static let vadRelative: Float = 0.10          // threshold = max(floor, relative * peak)
-    private static let vadPaddingMs: Int = 250
-    private static let vadMinDurationMs: Int = 150
-    private static let vadMaxSilenceFraction: Float = 0.98
     private static let promptTokenBudget: Int = 60
+
+    private let vad = SilenceTrimmer()
 
     /// When true, the base + terminology prompt is passed to Whisper's decoder as
     /// `promptTokens`. This biases the model toward those terms but also disables
@@ -122,7 +118,7 @@ public final class TranscriptionEngine {
         guard let kit else { pttLog("finalize: kit is nil"); return nil }
         guard !accumulated.isEmpty else { pttLog("finalize: accumulated empty (no audio captured)"); return nil }
         let rawMs = Int(Double(accumulated.count) / 16.0)
-        guard let trimmed = trimSilence(accumulated) else {
+        guard let trimmed = vad.trimSilence(accumulated) else {
             pttLog("finalize: VAD dropped buffer (raw=\(rawMs)ms)")
             return nil
         }
@@ -201,57 +197,5 @@ public final class TranscriptionEngine {
         let lead = deficit / 2
         let trail = deficit - lead
         return Array(repeating: 0, count: lead) + samples + Array(repeating: 0, count: trail)
-    }
-
-    // MARK: - VAD
-
-    /// Trim leading/trailing silence from the buffer and return `nil` if the result
-    /// is too short or the input is almost entirely silent.
-    private func trimSilence(_ samples: [Float]) -> [Float]? {
-        let windowSize = Self.vadWindowSamples
-        guard samples.count >= windowSize else { return nil }
-
-        let windowCount = samples.count / windowSize
-        var rms = [Float](); rms.reserveCapacity(windowCount)
-        var peak: Float = 0
-        for w in 0..<windowCount {
-            let start = w * windowSize
-            var sum: Float = 0
-            for i in 0..<windowSize {
-                let v = samples[start + i]
-                sum += v * v
-            }
-            let r = (sum / Float(windowSize)).squareRoot()
-            rms.append(r)
-            if r > peak { peak = r }
-        }
-
-        let threshold = max(Self.vadFloor, Self.vadRelative * peak)
-        var firstVoice = -1
-        var lastVoice = -1
-        var silentCount = 0
-        for (i, r) in rms.enumerated() {
-            if r > threshold {
-                if firstVoice < 0 { firstVoice = i }
-                lastVoice = i
-            } else {
-                silentCount += 1
-            }
-        }
-        guard firstVoice >= 0 else { return nil }
-
-        let silentFraction = Float(silentCount) / Float(windowCount)
-        if silentFraction > Self.vadMaxSilenceFraction { return nil }
-
-        let paddingWindows = (Self.vadPaddingMs * 16) / windowSize    // 16 samples per ms
-        let startWindow = max(0, firstVoice - paddingWindows)
-        let endWindow = min(windowCount - 1, lastVoice + paddingWindows)
-
-        let startSample = startWindow * windowSize
-        let endSample = min(samples.count, (endWindow + 1) * windowSize)
-        let durationMs = (endSample - startSample) / 16
-        if durationMs < Self.vadMinDurationMs { return nil }
-
-        return Array(samples[startSample..<endSample])
     }
 }

@@ -2,11 +2,13 @@ import XCTest
 @testable import HoldSpeakCore
 
 final class TextCleanerTests: XCTestCase {
-    func test_removesRussianFillers() {
-        XCTAssertEqual(TextCleaner.clean("ну эээ я пошел"), "Я пошел.")
+    func test_removesExtendedRussianHesitations_keepsShortFillers() {
+        // Only extended hesitations (эээ, эммм) are dropped; "ну" is legitimate speech.
+        XCTAssertEqual(TextCleaner.clean("ну эээ я пошел"), "Ну я пошел.")
     }
-    func test_removesEnglishFillers() {
-        XCTAssertEqual(TextCleaner.clean("uhm I think uh we should go"), "I think we should go.")
+    func test_removesExtendedEnglishHesitations_keepsShortFillers() {
+        // "uhm" matches the uhm+ rule; bare "uh" is kept (uh{2,} requires uhh…).
+        XCTAssertEqual(TextCleaner.clean("uhm I think uh we should go"), "I think uh we should go.")
     }
     func test_collapsesStutter() {
         XCTAssertEqual(TextCleaner.clean("я я я думаю"), "Я думаю.")
@@ -25,9 +27,8 @@ final class TextCleanerTests: XCTestCase {
     func test_returnsEmptyForWhitespaceOnly() {
         XCTAssertEqual(TextCleaner.clean("   "), "")
     }
-    func test_removesLikeFiller() {
-        // "like" as filler — rule is aggressive; accept removal for v1
-        XCTAssertEqual(TextCleaner.clean("I like pizza"), "I pizza.")
+    func test_keepsLikeAsRegularWord() {
+        XCTAssertEqual(TextCleaner.clean("I like pizza"), "I like pizza.")
     }
 
     // MARK: - Terminology canonicalization
