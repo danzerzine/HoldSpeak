@@ -2,13 +2,16 @@ import Cocoa
 import Combine
 
 public final class HotkeyMonitor {
-    public enum Event { case startHold; case endHold }
+    /// `.startHold` fires immediately on key press so recording can begin without
+    /// losing the first syllables. If the key is released before `holdThresholdMs`
+    /// the press is treated as an accidental tap and `.cancelHold` follows instead
+    /// of `.endHold`.
+    public enum Event { case startHold; case endHold; case cancelHold }
     public let events = PassthroughSubject<Event, Never>()
 
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
-    private var pendingStartWork: DispatchWorkItem?
-    private var isHolding = false
+    private var holdStartedAt: Date?
 
     private let prefs: PreferencesStore
     public init(prefs: PreferencesStore = .shared) { self.prefs = prefs }
@@ -53,9 +56,7 @@ public final class HotkeyMonitor {
         }
         eventTap = nil
         runLoopSource = nil
-        pendingStartWork?.cancel()
-        pendingStartWork = nil
-        isHolding = false
+        holdStartedAt = nil
     }
 
     /// Returns true if the event should be consumed (dropped).
@@ -76,8 +77,8 @@ public final class HotkeyMonitor {
         let otherGeneralMods = flags & HotkeyBinding.allGeneralMods & ~binding.mods
         if ourKeyDown && otherGeneralMods != 0 { return }
 
-        if ourKeyDown && !isHolding {
-            scheduleStart()
+        if ourKeyDown && holdStartedAt == nil {
+            beginHold()
         } else if !ourKeyDown {
             endOrCancel()
         }
@@ -91,7 +92,7 @@ public final class HotkeyMonitor {
         let currentMods = flags & HotkeyBinding.allGeneralMods
         if type == .keyDown {
             guard currentMods == binding.mods else { return false }
-            if !isHolding && pendingStartWork == nil { scheduleStart() }
+            if holdStartedAt == nil { beginHold() }
             return true
         } else {
             endOrCancel()
@@ -99,25 +100,15 @@ public final class HotkeyMonitor {
         }
     }
 
-    private func scheduleStart() {
-        pendingStartWork?.cancel()
-        let threshold = Double(prefs.holdThresholdMs) / 1000.0
-        let work = DispatchWorkItem { [weak self] in
-            guard let self else { return }
-            self.isHolding = true
-            self.events.send(.startHold)
-        }
-        pendingStartWork = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + threshold, execute: work)
+    private func beginHold() {
+        holdStartedAt = Date()
+        events.send(.startHold)
     }
 
     private func endOrCancel() {
-        if isHolding {
-            isHolding = false
-            events.send(.endHold)
-        } else {
-            pendingStartWork?.cancel()
-            pendingStartWork = nil
-        }
+        guard let startedAt = holdStartedAt else { return }
+        holdStartedAt = nil
+        let heldMs = Date().timeIntervalSince(startedAt) * 1000.0
+        events.send(heldMs >= Double(prefs.holdThresholdMs) ? .endHold : .cancelHold)
     }
 }

@@ -128,8 +128,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .sink { [weak self] event in
                 guard let self else { return }
                 switch event {
-                case .startHold: self.startRecording()
-                case .endHold:   self.endRecording()
+                case .startHold:  self.startRecording()
+                case .endHold:    self.endRecording()
+                case .cancelHold: self.cancelRecording()
                 }
             }
             .store(in: &cancellables)
@@ -164,6 +165,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.setRecording(true)
         overlay.update(AnyView(hudView()))
         overlay.show(anchor: menu.statusItemFrame)
+    }
+
+    private func cancelRecording() {
+        pttLog("cancelRecording (tap shorter than hold threshold)")
+        _ = recorder.stop()
+        menu.setRecording(false)
+        overlay.hide()
+        engine.beginStream()
     }
 
     private func endRecording() {
