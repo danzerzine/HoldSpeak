@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotkey: HotkeyMonitor!
     private var recorder: AudioRecorder!
     private var engine: TranscriptionEngine!
+    private var coordinator: TranscriptionCoordinator!
     private var store: HistoryStore!
     private var metrics: MetricsEngine!
     private var overlay: OverlayWindow!
@@ -37,6 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         })
         recorder = AudioRecorder()
         engine = TranscriptionEngine()
+        coordinator = TranscriptionCoordinator(engine: engine, store: store)
         modelsVM = ModelsViewModel()
         popoverVM = PopoverViewModel(store: store, metricsEngine: metrics)
         menu = MenuBarController(viewModel: popoverVM)
@@ -182,43 +184,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         overlay.hide()
 
         Task { @MainActor in
-            let startNs = DispatchTime.now().uptimeNanoseconds
-            let result = await engine.finalize()
-            guard let result = result else {
-                pttLog("finalize returned nil (model not loaded or empty audio)")
+            switch await coordinator.finishRecording() {
+            case .empty:
                 return
-            }
-            let elapsedMs = (DispatchTime.now().uptimeNanoseconds - startNs) / 1_000_000
-            pttLog("result raw: \"\(result.text)\" lang=\(result.language ?? "?") durMs=\(result.durationMs) elapsedMs=\(elapsedMs)")
-            let pref = PreferencesStore.shared.primaryLanguage
-            let lang = result.language ?? pref.whisperCode ?? TerminologyStore.shared.activeLanguage
-            if pref == .auto, let detected = result.language, !detected.isEmpty {
-                TerminologyStore.shared.setActiveLanguage(detected)
-            }
-            let prefs = PreferencesStore.shared
-            let cleaned = TextCleaner.clean(
-                result.text,
-                terminology: TerminologyStore.shared.entries(for: lang),
-                autoPunctuation: prefs.autoPunctuation,
-                autoCapitalize: prefs.autoCapitalize
-            )
-            pttLog("cleaned: \"\(cleaned)\"")
-            guard !cleaned.isEmpty else { return }
-            let wordCount = cleaned.split(whereSeparator: { $0.isWhitespace }).count
-            let insertion = TextInserter.insert(cleaned + " ")
-            pttLog("insertion: \(insertion)")
-            let record = TranscriptionRecord(
-                id: nil,
-                createdAt: Int64(Date().timeIntervalSince1970 * 1000),
-                rawText: result.text,
-                cleanedText: cleaned,
-                durationMs: result.durationMs,
-                wordCount: wordCount,
-                language: result.language,
-                inserted: insertion == .inserted
-            )
-            _ = try? store.append(record)
-            switch insertion {
             case .skippedSecureField:
                 notify("Skipped password field", "Transcript saved to history.")
             case .noFocus:
