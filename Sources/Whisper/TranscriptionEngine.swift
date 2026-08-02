@@ -1,16 +1,11 @@
 import AVFoundation
-import Combine
 import WhisperKit
 
 @MainActor
-public final class TranscriptionEngine: ObservableObject {
-    @Published public private(set) var partialText: String = ""
-    @Published public private(set) var isLoading: Bool = false
-
+public final class TranscriptionEngine {
     private var kit: WhisperKit?
     private var currentModelID: WhisperModelID?
     private var accumulated: [Float] = []
-    private var streaming = false
     private var promptTokens: [Int]?
     private var terminologyObserver: NSObjectProtocol?
     private var activeLanguageObserver: NSObjectProtocol?
@@ -80,8 +75,6 @@ public final class TranscriptionEngine: ObservableObject {
 
     public func preload(model: WhisperModelID) async throws {
         if currentModelID == model, kit != nil { return }
-        isLoading = true
-        defer { isLoading = false }
         let url: URL
         if let local = ModelManager.shared.locateModel(model) {
             url = local
@@ -117,39 +110,12 @@ public final class TranscriptionEngine: ObservableObject {
 
     public func beginStream() {
         accumulated.removeAll(keepingCapacity: true)
-        partialText = ""
-    }
-
-    public var currentDurationMs: Int { Int(Double(accumulated.count) / 16.0) }
-
-    /// Wait until any in-flight streaming pass completes, capped by `timeoutMs`.
-    public func awaitStream(timeoutMs: Int) async {
-        let deadline = Date().addingTimeInterval(Double(timeoutMs) / 1000.0)
-        while streaming && Date() < deadline {
-            try? await Task.sleep(nanoseconds: 10_000_000)
-        }
     }
 
     public func feed(_ buffer: AVAudioPCMBuffer) {
         guard let ch = buffer.floatChannelData?[0] else { return }
         let count = Int(buffer.frameLength)
         accumulated.append(contentsOf: UnsafeBufferPointer(start: ch, count: count))
-        Task { await self.runStreamingPass() }
-    }
-
-    private func runStreamingPass() async {
-        guard !streaming, let kit else { return }
-        streaming = true
-        defer { streaming = false }
-        let snapshot = accumulated
-        let options = makeOptions(streaming: true)
-        do {
-            let results: [TranscriptionResult] = try await kit.transcribe(audioArray: snapshot, decodeOptions: options)
-            let text = results.map(\.text).joined(separator: " ").trimmingCharacters(in: .whitespaces)
-            if !text.isEmpty { self.partialText = text }
-        } catch {
-            NSLog("TranscriptionEngine streaming error: \(error)")
-        }
     }
 
     public func finalize() async -> (text: String, language: String?, durationMs: Int)? {
@@ -207,14 +173,14 @@ public final class TranscriptionEngine: ObservableObject {
         return top1.code
     }
 
-    private func makeOptions(override: String? = nil, streaming: Bool = false) -> DecodingOptions {
+    private func makeOptions(override: String? = nil) -> DecodingOptions {
         DecodingOptions(
             verbose: false,
             task: .transcribe,
             language: override ?? PreferencesStore.shared.primaryLanguage.whisperCode,
             temperature: 0.0,
             temperatureIncrementOnFallback: 0.2,
-            temperatureFallbackCount: streaming ? 0 : 2,
+            temperatureFallbackCount: 2,
             usePrefillPrompt: true,
             skipSpecialTokens: true,
             withoutTimestamps: true,
