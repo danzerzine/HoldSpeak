@@ -2,11 +2,17 @@ import Foundation
 
 public enum TextCleaner {
     private struct Rule {
-        let pattern: String
+        let regex: NSRegularExpression
         let replacement: String
-        let options: NSRegularExpression.Options
+
+        init(pattern: String, replacement: String, options: NSRegularExpression.Options) {
+            // Patterns are literals: a compile failure is a programming error.
+            regex = try! NSRegularExpression(pattern: pattern, options: options)
+            self.replacement = replacement
+        }
     }
 
+    /// Compiled once; NSRegularExpression is safe to share across threads.
     private static let rules: [Rule] = [
         // Whisper "sound event" annotations: [музыка], [music], (applause), etc.
         Rule(pattern: #"[\[\(][^\]\)]{1,40}[\]\)]"#,
@@ -70,9 +76,8 @@ public enum TextCleaner {
     ) -> String {
         var s = input
         for rule in rules {
-            guard let regex = try? NSRegularExpression(pattern: rule.pattern, options: rule.options) else { continue }
             let range = NSRange(s.startIndex..., in: s)
-            s = regex.stringByReplacingMatches(in: s, range: range, withTemplate: rule.replacement)
+            s = rule.regex.stringByReplacingMatches(in: s, range: range, withTemplate: rule.replacement)
         }
         s = s.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: ",;:")))
         guard !s.isEmpty else { return "" }
@@ -97,15 +102,30 @@ public enum TextCleaner {
         var s = input
         for entry in terminology {
             for variant in entry.variants where !variant.isEmpty {
-                let escaped = NSRegularExpression.escapedPattern(for: variant)
-                let pattern = #"(?<![\p{L}\p{N}])"# + escaped + #"(?![\p{L}\p{N}])"#
-                let options: NSRegularExpression.Options = entry.caseSensitive ? [] : [.caseInsensitive]
-                guard let regex = try? NSRegularExpression(pattern: pattern, options: options) else { continue }
+                guard let regex = variantRegex(variant, caseSensitive: entry.caseSensitive) else { continue }
                 let range = NSRange(s.startIndex..., in: s)
                 let replacement = NSRegularExpression.escapedTemplate(for: entry.canonical)
                 s = regex.stringByReplacingMatches(in: s, range: range, withTemplate: replacement)
             }
         }
         return s
+    }
+
+    /// Terminology regexes keyed by variant + case sensitivity. A variant's regex
+    /// depends only on those two, so edits to the terminology never invalidate it.
+    private static var variantRegexCache: [String: NSRegularExpression] = [:]
+    private static let variantRegexLock = NSLock()
+
+    private static func variantRegex(_ variant: String, caseSensitive: Bool) -> NSRegularExpression? {
+        let key = (caseSensitive ? "1" : "0") + variant
+        variantRegexLock.lock()
+        defer { variantRegexLock.unlock() }
+        if let cached = variantRegexCache[key] { return cached }
+        let escaped = NSRegularExpression.escapedPattern(for: variant)
+        let pattern = #"(?<![\p{L}\p{N}])"# + escaped + #"(?![\p{L}\p{N}])"#
+        let options: NSRegularExpression.Options = caseSensitive ? [] : [.caseInsensitive]
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: options) else { return nil }
+        variantRegexCache[key] = regex
+        return regex
     }
 }
