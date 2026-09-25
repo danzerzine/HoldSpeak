@@ -4,6 +4,8 @@
 
 # HoldSpeak
 
+**Website: [holdspeak.app](https://holdspeak.app/)** · [Download](https://github.com/timmal/HoldSpeak/releases/latest) · [Free Superwhisper alternative — comparison](https://holdspeak.app/superwhisper-alternative.html)
+
 Local push-to-talk dictation for macOS. HoldSpeak is a **menu bar app** (no Dock icon, no windows in the way) — it lives in the status bar and stays out of your workflow until you hold the hotkey. Speak, release — recognized text is inserted into the focused input. No cloud: Whisper runs on GPU via WhisperKit.
 
 <p align="center">
