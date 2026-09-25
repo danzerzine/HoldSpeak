@@ -27,8 +27,12 @@ public struct TranscriptionRecord: Codable, FetchableRecord, PersistableRecord, 
 public protocol HistoryStoring {
     func append(_ record: TranscriptionRecord) throws -> TranscriptionRecord
     func recent(limit: Int) throws -> [TranscriptionRecord]
+    /// Metrics queries (`totalWords`, `sumsSince`) cover every utterance ever
+    /// appended, not just the pruned history window shown to the user.
     func totalWords() throws -> Int
     func sumsSince(_ unixMs: Int64) throws -> (words: Int, durationMs: Int)
+    /// Clears the visible history (transcript text) only. Metrics are kept;
+    /// they have their own reset via `metricsResetAtMs`.
     func clear() throws
 }
 
@@ -67,6 +71,20 @@ public final class HistoryStore: HistoryStoring {
                 t.column("inserted", .boolean).notNull().defaults(to: false)
             }
         }
+        // History text is pruned to `maxEntries`, so metrics live in a separate
+        // text-free table that is never pruned (rows are a few bytes each).
+        migrator.registerMigration("v2_utterance_stats") { db in
+            try db.create(table: "utterance_stats") { t in
+                t.autoIncrementedPrimaryKey("id")
+                t.column("createdAt", .integer).notNull().indexed()
+                t.column("wordCount", .integer).notNull()
+                t.column("durationMs", .integer).notNull()
+            }
+            try db.execute(sql: """
+                INSERT INTO utterance_stats (createdAt, wordCount, durationMs)
+                SELECT createdAt, wordCount, durationMs FROM transcriptions
+                """)
+        }
         try migrator.migrate(dbQueue)
     }
 
@@ -74,6 +92,10 @@ public final class HistoryStore: HistoryStoring {
         let saved = try dbQueue.write { db -> TranscriptionRecord in
             var r = record
             try r.insert(db)
+            try db.execute(
+                sql: "INSERT INTO utterance_stats (createdAt, wordCount, durationMs) VALUES (?, ?, ?)",
+                arguments: [r.createdAt, r.wordCount, r.durationMs]
+            )
             try db.execute(
                 sql: """
                 DELETE FROM transcriptions
@@ -102,14 +124,14 @@ public final class HistoryStore: HistoryStoring {
 
     public func totalWords() throws -> Int {
         try dbQueue.read { db in
-            try Int.fetchOne(db, sql: "SELECT COALESCE(SUM(wordCount), 0) FROM transcriptions") ?? 0
+            try Int.fetchOne(db, sql: "SELECT COALESCE(SUM(wordCount), 0) FROM utterance_stats") ?? 0
         }
     }
 
     public func sumsSince(_ unixMs: Int64) throws -> (words: Int, durationMs: Int) {
         try dbQueue.read { db in
             guard let row = try Row.fetchOne(db,
-                sql: "SELECT COALESCE(SUM(wordCount),0) AS w, COALESCE(SUM(durationMs),0) AS d FROM transcriptions WHERE createdAt > ?",
+                sql: "SELECT COALESCE(SUM(wordCount),0) AS w, COALESCE(SUM(durationMs),0) AS d FROM utterance_stats WHERE createdAt > ?",
                 arguments: [unixMs]) else { return (0, 0) }
             let w: Int = row["w"] ?? 0
             let d: Int = row["d"] ?? 0
@@ -117,6 +139,8 @@ public final class HistoryStore: HistoryStoring {
         }
     }
 
+    /// Deletes history rows only; `utterance_stats` is intentionally untouched so
+    /// "Clear history" doesn't wipe metrics ("Reset metrics" moves the anchor instead).
     public func clear() throws {
         try dbQueue.write { db in try db.execute(sql: "DELETE FROM transcriptions") }
         NotificationCenter.default.post(name: .historyDidChange, object: nil)

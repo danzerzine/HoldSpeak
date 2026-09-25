@@ -1,6 +1,8 @@
 import XCTest
 @testable import HoldSpeakCore
 
+/// Stands in for the metrics side of `HistoryStore` (the unpruned `utterance_stats`
+/// table), so sums here are independent of the 100-entry history cap.
 private final class MockStore: HistoryStoring {
     /// Returned for `sumsSince(0)` — the "since reset anchor" total query.
     var totalSums: (Int, Int) = (0, 0)
@@ -28,5 +30,21 @@ final class MetricsEngineTests: XCTestCase {
         let s = MockStore()
         let engine = MetricsEngine(store: s)
         XCTAssertEqual(try engine.current().wpm7d, 0)
+    }
+
+    func test_realStore_totalsNotCappedByHistoryPruning() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("pt-test-\(UUID().uuidString).sqlite")
+        let store = try HistoryStore(url: url)
+        let now = Date()
+        let nowMs = Int64(now.timeIntervalSince1970 * 1000)
+        let n = HistoryStore.maxEntries * 2
+        for i in 0..<n {
+            _ = try store.append(.init(createdAt: nowMs - Int64(n - i), rawText: "", cleanedText: "",
+                                       durationMs: 60_000, wordCount: 100, language: nil, inserted: true))
+        }
+        try store.clear() // clearing history must not reset metrics
+        let m = try MetricsEngine(store: store).current(now: now)
+        XCTAssertEqual(m, Metrics(totalWords: n * 100, wpm7d: 100))
     }
 }
