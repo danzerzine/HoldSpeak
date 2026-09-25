@@ -32,6 +32,13 @@ public final class HotkeyMonitor {
             callback: { _, type, event, userInfo in
                 guard let userInfo = userInfo else { return Unmanaged.passUnretained(event) }
                 let this = Unmanaged<HotkeyMonitor>.fromOpaque(userInfo).takeUnretainedValue()
+                if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+                    // macOS disables the tap if the main thread stalls; without this
+                    // the hotkey stays dead until relaunch.
+                    pttLog("HotkeyMonitor: event tap disabled (\(type.rawValue)) — re-enabling")
+                    if let tap = this.eventTap { CGEvent.tapEnable(tap: tap, enable: true) }
+                    return Unmanaged.passUnretained(event)
+                }
                 if this.handle(event: event, type: type) {
                     return nil
                 }

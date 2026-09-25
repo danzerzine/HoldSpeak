@@ -52,6 +52,7 @@ struct PreferencesView: View {
     @State private var tab: PrefsTab = .general
     @State private var updateStatus: String?
     @State private var history: [TranscriptionRecord] = []
+    @State private var inputDevices: [InputDevice.Info] = []
 
     private static let historyLimit = HistoryStore.maxEntries
 
@@ -240,8 +241,44 @@ struct PreferencesView: View {
 
     // MARK: - Audio
 
+    private func loadInputDevices() {
+        DispatchQueue.global(qos: .userInitiated).async {
+            let devices = InputDevice.inputDevices()
+            DispatchQueue.main.async { inputDevices = devices }
+        }
+    }
+
+    private func inputLabel(_ selection: InputSelection) -> String {
+        switch selection {
+        case .systemDefault: return "System default"
+        case .avoidBluetooth: return "Built-in if default is Bluetooth"
+        case .device(let uid):
+            return inputDevices.first(where: { $0.uid == uid })?.name ?? "Disconnected device"
+        }
+    }
+
     private var audioTab: some View {
         VStack(alignment: .leading, spacing: 18) {
+            labeledRow("Microphone", alignment: .top) {
+                VStack(alignment: .leading, spacing: 6) {
+                    styledDropdown(selection: $prefs.inputSelection, width: 280,
+                                   current: inputLabel(prefs.inputSelection)) {
+                        Text(inputLabel(.avoidBluetooth)).tag(InputSelection.avoidBluetooth)
+                        Text(inputLabel(.systemDefault)).tag(InputSelection.systemDefault)
+                        Divider()
+                        ForEach(inputDevices) { d in
+                            Text(d.name).tag(InputSelection.device(uid: d.uid))
+                        }
+                    }
+                    Text("Recording through a Bluetooth mic makes headphone audio stutter and drop in quality.")
+                        .font(.system(size: 11))
+                        .foregroundColor(PTT.textSoft(scheme))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(width: 280, alignment: .leading)
+                }
+            }
+            .onAppear(perform: loadInputDevices)
+
             labeledRow("Primary language", alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
                     styledDropdown(selection: $prefs.primaryLanguage, width: 280, current: prefs.primaryLanguage.label) {

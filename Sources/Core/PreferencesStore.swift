@@ -85,6 +85,12 @@ public final class PreferencesStore: ObservableObject {
     @AppStorage("autoPunctuation") public var autoPunctuation: Bool = true
     @AppStorage("autoCapitalize")  public var autoCapitalize: Bool = true
     @AppStorage("metricsResetAtMs") public var metricsResetAtMs: Int = 0
+    @AppStorage("inputDevice")     private var inputDeviceRaw: String = InputSelection.avoidBluetooth.rawValue
+
+    public var inputSelection: InputSelection {
+        get { InputSelection(rawValue: inputDeviceRaw) }
+        set { objectWillChange.send(); inputDeviceRaw = newValue.rawValue }
+    }
 
     public func applyAppearance() {
         NSApp.appearance = appTheme.nsAppearance

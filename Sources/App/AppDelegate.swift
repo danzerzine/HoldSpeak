@@ -153,17 +153,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             .store(in: &cancellables)
 
+        recorder.failures
+            .sink { [weak self] error in
+                pttLog("Recorder failure: \(error)")
+                guard let self else { return }
+                self.menu.setRecording(false)
+                self.overlay.hide()
+                if case AudioRecorderError.stalled = error {
+                    self.notify("Microphone not responding", "Audio was reset — try again.")
+                }
+            }
+            .store(in: &cancellables)
+
     }
 
     private func startRecording() {
         pttLog("startRecording")
         engine.beginStream()
-        do {
-            try recorder.start()
-        } catch {
-            pttLog("Recorder start failed: \(error)")
-            return
-        }
+        recorder.start(input: PreferencesStore.shared.inputSelection)
         menu.setRecording(true)
         overlay.update(AnyView(hudView()))
         overlay.show(anchor: menu.statusItemFrame)
@@ -171,30 +178,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func cancelRecording() {
         pttLog("cancelRecording (tap shorter than hold threshold)")
-        _ = recorder.stop()
+        recorder.stop()
         menu.setRecording(false)
         overlay.hide()
-        engine.beginStream()
     }
 
     private func endRecording() {
         pttLog("endRecording")
-        _ = recorder.stop()
         menu.setRecording(false)
         overlay.hide()
-
-        Task { @MainActor in
-            switch await coordinator.finishRecording() {
-            case .empty:
-                return
-            case .skippedSecureField:
-                notify("Skipped password field", "Transcript saved to history.")
-            case .noFocus:
-                notify("No focused input", "Transcript saved to history.")
-            case .inserted:
-                break
+        recorder.stop { [weak self] in
+            Task { @MainActor in
+                guard let self else { return }
+                switch await self.coordinator.finishRecording() {
+                case .empty:
+                    return
+                case .skippedSecureField:
+                    self.notify("Skipped password field", "Transcript saved to history.")
+                case .noFocus:
+                    self.notify("No focused input", "Transcript saved to history.")
+                case .inserted:
+                    break
+                }
+                self.popoverVM.refresh()
             }
-            popoverVM.refresh()
         }
     }
 
