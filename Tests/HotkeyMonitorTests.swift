@@ -1,0 +1,44 @@
+import XCTest
+import Combine
+import Carbon.HIToolbox
+@testable import HoldSpeakCore
+
+final class HotkeyMonitorTests: XCTestCase {
+    private let optSpace = HotkeyBinding.key(keyCode: UInt16(kVK_Space), mods: 0x00080000)
+
+    /// Builds (never posts) a keyboard event for feeding `handleKey` directly.
+    private func key(_ code: Int, down: Bool, flags: CGEventFlags = []) -> CGEvent {
+        let e = CGEvent(keyboardEventSource: nil, virtualKey: CGKeyCode(code), keyDown: down)!
+        e.flags = flags
+        return e
+    }
+
+    func test_plainKeyUp_passesThroughWhenNoHoldActive() {
+        let monitor = HotkeyMonitor()
+        XCTAssertFalse(monitor.handleKey(event: key(kVK_Space, down: true), type: .keyDown, binding: optSpace))
+        XCTAssertFalse(monitor.handleKey(event: key(kVK_Space, down: false), type: .keyUp, binding: optSpace))
+    }
+
+    func test_boundKeyUp_isConsumedAndEndsHold() {
+        let monitor = HotkeyMonitor()
+        var events: [HotkeyMonitor.Event] = []
+        let sub = monitor.events.sink { events.append($0) }
+        defer { sub.cancel() }
+
+        XCTAssertTrue(monitor.handleKey(event: key(kVK_Space, down: true, flags: .maskAlternate),
+                                        type: .keyDown, binding: optSpace))
+        XCTAssertTrue(monitor.handleKey(event: key(kVK_Space, down: false, flags: .maskAlternate),
+                                        type: .keyUp, binding: optSpace))
+        XCTAssertEqual(events.count, 2)
+        XCTAssertEqual(events.first, .startHold)
+
+        // A second keyUp with the hold already over must pass through.
+        XCTAssertFalse(monitor.handleKey(event: key(kVK_Space, down: false), type: .keyUp, binding: optSpace))
+    }
+
+    func test_otherKeys_areIgnored() {
+        let monitor = HotkeyMonitor()
+        XCTAssertFalse(monitor.handleKey(event: key(kVK_ANSI_A, down: true, flags: .maskAlternate),
+                                         type: .keyDown, binding: optSpace))
+    }
+}

@@ -96,20 +96,31 @@ public final class PreferencesStore: ObservableObject {
         NSApp.appearance = appTheme.nsAppearance
     }
 
+    /// Decoded `hotkey`, keyed by the JSON it came from. The event tap reads the
+    /// binding on every system-wide key event, so avoid re-decoding each time.
+    private var cachedHotkey: (json: String, binding: HotkeyBinding)?
+
     public var hotkey: HotkeyBinding {
         get {
-            if let data = hotkeyBindingJSON.data(using: .utf8),
+            let json = hotkeyBindingJSON
+            if let cached = cachedHotkey, cached.json == json { return cached.binding }
+            let binding: HotkeyBinding
+            if let data = json.data(using: .utf8),
                let b = try? JSONDecoder().decode(HotkeyBinding.self, from: data) {
-                return b
+                binding = b
+            } else {
+                let legacy = UserDefaults.standard.string(forKey: "hotkey")
+                binding = legacy == "rightCmd" ? .rightCommand : .rightOption
             }
-            let legacy = UserDefaults.standard.string(forKey: "hotkey")
-            return legacy == "rightCmd" ? .rightCommand : .rightOption
+            cachedHotkey = (json, binding)
+            return binding
         }
         set {
             objectWillChange.send()
             if let data = try? JSONEncoder().encode(newValue),
                let s = String(data: data, encoding: .utf8) {
                 hotkeyBindingJSON = s
+                cachedHotkey = (s, newValue)
             }
         }
     }

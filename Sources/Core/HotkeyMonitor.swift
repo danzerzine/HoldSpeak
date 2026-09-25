@@ -91,7 +91,7 @@ public final class HotkeyMonitor {
         }
     }
 
-    private func handleKey(event: CGEvent, type: CGEventType, binding: HotkeyBinding) -> Bool {
+    func handleKey(event: CGEvent, type: CGEventType, binding: HotkeyBinding) -> Bool {
         guard type == .keyDown || type == .keyUp else { return false }
         let kc = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
         guard kc == binding.keyCode else { return false }
@@ -102,6 +102,9 @@ public final class HotkeyMonitor {
             if holdStartedAt == nil { beginHold() }
             return true
         } else {
+            // Only swallow the keyUp that ends our hold — e.g. with ⌥Space bound, a
+            // plain Space keyUp must still reach the focused app.
+            guard holdStartedAt != nil else { return false }
             endOrCancel()
             return true
         }
