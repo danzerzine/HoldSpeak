@@ -41,7 +41,7 @@ final class TranscriptionCoordinator {
             return .empty
         }
         let elapsedMs = (DispatchTime.now().uptimeNanoseconds - startNs) / 1_000_000
-        pttLog("result raw: \"\(result.text)\" lang=\(result.language ?? "?") durMs=\(result.durationMs) elapsedMs=\(elapsedMs)")
+        pttLog("result raw: \(logText(result.text)) lang=\(result.language ?? "?") durMs=\(result.durationMs) elapsedMs=\(elapsedMs)")
 
         let prefs = PreferencesStore.shared
         let lang = result.language ?? prefs.primaryLanguage.whisperCode ?? TerminologyStore.shared.activeLanguage
@@ -54,7 +54,7 @@ final class TranscriptionCoordinator {
             autoPunctuation: prefs.autoPunctuation,
             autoCapitalize: prefs.autoCapitalize
         )
-        pttLog("cleaned: \"\(cleaned)\"")
+        pttLog("cleaned: \(logText(cleaned))")
         guard !cleaned.isEmpty else { return .empty }
 
         let insertion = TextInserter.insert(cleaned + " ")

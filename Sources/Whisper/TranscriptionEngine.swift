@@ -153,7 +153,7 @@ public final class TranscriptionEngine {
             let results = try await kit.transcribe(audioArray: padded, decodeOptions: makeOptions(override: override))
             let text = results.map(\.text).joined(separator: " ").trimmingCharacters(in: .whitespaces)
             let lang = results.first?.language
-            pttLog("finalize: text=\"\(text)\" lang=\(lang ?? "?") override=\(override ?? "nil") dur=\(durationMs)ms")
+            pttLog("finalize: text=\(logText(text)) lang=\(lang ?? "?") override=\(override ?? "nil") dur=\(durationMs)ms")
             if text.isEmpty { return nil }
             return (text, lang, durationMs)
         } catch {
