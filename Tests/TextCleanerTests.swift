@@ -69,4 +69,29 @@ final class TextCleanerTests: XCTestCase {
     func test_hallucinationBlacklist_stillWorks() {
         XCTAssertEqual(TextCleaner.clean("спасибо за просмотр"), "")
     }
+
+    func test_hallucination_dropsWholeUtteranceIgnoringCaseAndPunctuation() {
+        XCTAssertEqual(TextCleaner.clean("Спасибо за просмотр!"), "")
+        XCTAssertEqual(TextCleaner.clean("  Thank you for watching...  "), "")
+        XCTAssertEqual(TextCleaner.clean("Продолжение следует..."), "")
+    }
+
+    func test_hallucination_dropsBareThanksFromSilence() {
+        XCTAssertEqual(TextCleaner.clean("Thank you."), "")
+        XCTAssertEqual(TextCleaner.clean("thank you"), "")
+        XCTAssertEqual(TextCleaner.clean("Спасибо."), "")
+    }
+
+    func test_hallucination_dropsSubtitleCredits() {
+        XCTAssertEqual(TextCleaner.clean("Субтитры сделал DimaTorzok"), "")
+        XCTAssertEqual(TextCleaner.clean("Редактор субтитров А.Семкин"), "")
+    }
+
+    func test_hallucination_keepsPhraseInsideRealSpeech() {
+        XCTAssertEqual(TextCleaner.clean("спасибо за внимание, коллеги"), "Спасибо за внимание, коллеги.")
+        XCTAssertEqual(TextCleaner.clean("I want to subscribe to the newsletter"),
+                       "I want to subscribe to the newsletter.")
+        XCTAssertEqual(TextCleaner.clean("thank you for the review"), "Thank you for the review.")
+        XCTAssertEqual(TextCleaner.clean("скажи ему спасибо"), "Скажи ему спасибо.")
+    }
 }

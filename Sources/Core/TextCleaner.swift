@@ -24,23 +24,43 @@ public enum TextCleaner {
         Rule(pattern: #"\s+"#, replacement: " ", options: []),
     ]
 
-    /// Known Whisper hallucinations — typical training-data subtitle boilerplate.
-    private static let hallucinations: [String] = [
+    /// Known Whisper hallucinations on silence — typical training-data subtitle
+    /// boilerplate. Matched against the whole utterance only, so the same words
+    /// inside real speech ("спасибо за внимание, коллеги") are kept.
+    private static let hallucinations: Set<String> = [
         "продолжение следует",
         "спасибо за просмотр",
         "спасибо за внимание",
-        "субтитры делал",
-        "субтитры сделал",
-        "субтитры подготовил",
-        "субтитры by",
-        "dimatorzok",
-        "редактор субтитров",
+        "спасибо",
+        "спасибо большое",
         "thanks for watching",
         "thank you for watching",
+        "thank you",
+        "thank you very much",
+        "thank you so much",
         "please subscribe",
-        "subscribe to",
+        "subscribe to the channel",
         "like and subscribe",
     ]
+
+    /// Subtitle-credit lines ("Субтитры сделал DimaTorzok") end with a varying
+    /// name, so they're matched by how the utterance starts.
+    private static let hallucinationPrefixes: [String] = [
+        "субтитры делал",
+        "субтитры сделал",
+        "субтитры создавал",
+        "субтитры подготовил",
+        "субтитры by",
+        "редактор субтитров",
+        "dimatorzok",
+    ]
+
+    private static func isHallucination(_ s: String) -> Bool {
+        let normalized = s.lowercased()
+            .trimmingCharacters(in: CharacterSet.whitespacesAndNewlines.union(.punctuationCharacters))
+        return hallucinations.contains(normalized)
+            || hallucinationPrefixes.contains { normalized.hasPrefix($0) }
+    }
 
     public static func clean(
         _ input: String,
@@ -57,11 +77,8 @@ public enum TextCleaner {
         s = s.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: ",;:")))
         guard !s.isEmpty else { return "" }
         if s.rangeOfCharacter(from: .alphanumerics) == nil { return "" }
-        // Drop the utterance entirely if its normalized form matches a known Whisper hallucination.
-        let lower = s.lowercased()
-        for h in hallucinations where lower.contains(h) {
-            return ""
-        }
+        // Drop the utterance entirely if its normalized form is a known Whisper hallucination.
+        if isHallucination(s) { return "" }
         s = canonicalize(s, terminology: terminology)
         if autoCapitalize {
             s = s.prefix(1).uppercased() + s.dropFirst()
