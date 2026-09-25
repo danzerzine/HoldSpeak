@@ -185,7 +185,7 @@ public final class TranscriptionEngine {
             let delta = top1.prob - top2.prob
             pttLog("finalize detect: top1=\(top1.code):\(top1.prob) top2=\(top2.code):\(top2.prob) delta=\(delta)")
             if delta < Self.codeSwitchDeltaThreshold && top2.prob > Self.codeSwitchMinProb {
-                return nil      // let Whisper switch languages per-segment
+                return nil      // too close to call: let Whisper detect during decoding (see makeOptions)
             }
         } else {
             pttLog("finalize detect: top1=\(top1.code):\(top1.prob) (only candidate in preferred)")
@@ -194,14 +194,19 @@ public final class TranscriptionEngine {
     }
 
     private func makeOptions(override: String? = nil) -> DecodingOptions {
-        DecodingOptions(
+        let language = override ?? PreferencesStore.shared.primaryLanguage.whisperCode
+        return DecodingOptions(
             verbose: false,
             task: .transcribe,
-            language: override ?? PreferencesStore.shared.primaryLanguage.whisperCode,
+            language: language,
             temperature: 0.0,
             temperatureIncrementOnFallback: 0.2,
             temperatureFallbackCount: 2,
             usePrefillPrompt: true,
+            // With prefill on, WhisperKit's detectLanguage defaults to false and a nil
+            // language decodes as "en". Enable detection only when no language is set;
+            // WhisperKit ignores it whenever `language` is non-nil.
+            detectLanguage: language == nil,
             skipSpecialTokens: true,
             withoutTimestamps: true,
             promptTokens: Self.usePromptBiasing ? promptTokens : nil,
