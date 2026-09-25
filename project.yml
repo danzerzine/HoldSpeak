@@ -38,6 +38,7 @@ targets:
       - path: Sources/App
       - path: Sources/UI
       - path: Sources/Core
+      - path: Sources/ObjCCatch
       - path: Sources/Whisper
         optional: true
       - path: Resources/radio.svg
@@ -77,6 +78,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.timmal.push-to-talk
+        SWIFT_OBJC_BRIDGING_HEADER: Sources/App/HoldSpeak-Bridging-Header.h
         MARKETING_VERSION: "0.2.7"
         CURRENT_PROJECT_VERSION: "1"
         GENERATE_INFOPLIST_FILE: NO

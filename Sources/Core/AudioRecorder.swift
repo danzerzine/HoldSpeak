@@ -1,9 +1,14 @@
 import AVFoundation
 import Combine
 import CoreAudio
+#if SWIFT_PACKAGE
+import ObjCCatch
+#endif
 
 public enum AudioRecorderError: Error {
     case invalidInputFormat(sampleRate: Double, channels: UInt32)
+    /// The input device changed format while capture was starting.
+    case formatChanged
     /// A CoreAudio call did not return within the watchdog timeout.
     case stalled(operation: String)
 }
@@ -162,14 +167,30 @@ private final class Capture {
     }
 
     private func startEngine(device: AudioDeviceID?) throws {
+        // A Bluetooth device can switch sample rate between reading the format and
+        // installing the tap; a fresh engine picks up the new format, so retry once.
+        do {
+            try startEngineOnce(device: device)
+        } catch AudioRecorderError.formatChanged {
+            pttLog("AudioRecorder: input format changed during start — retrying with a fresh engine")
+            try startEngineOnce(device: device)
+        }
+    }
+
+    private func startEngineOnce(device: AudioDeviceID?) throws {
         let engine = self.engine ?? makeEngine(device: device)
         let inputNode = engine.inputNode
         let hwFormat = inputNode.outputFormat(forBus: 0)
-        pttLog("AudioRecorder hwFormat: sampleRate=\(hwFormat.sampleRate) channels=\(hwFormat.channelCount)")
+        let deviceRate = inputNode.inputFormat(forBus: 0).sampleRate
+        pttLog("AudioRecorder hwFormat: sampleRate=\(hwFormat.sampleRate) channels=\(hwFormat.channelCount) device=\(deviceRate)")
         guard hwFormat.sampleRate > 0, hwFormat.channelCount > 0 else {
             dropEngine()
             throw AudioRecorderError.invalidInputFormat(sampleRate: hwFormat.sampleRate,
                                                         channels: hwFormat.channelCount)
+        }
+        guard deviceRate == hwFormat.sampleRate else {
+            dropEngine()
+            throw AudioRecorderError.formatChanged
         }
         let monoHW = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: hwFormat.sampleRate,
                                    channels: 1, interleaved: false)!
@@ -179,24 +200,39 @@ private final class Capture {
                                                         channels: hwFormat.channelCount)
         }
 
-        inputNode.removeTap(onBus: 0)
         var tapCount = 0
-        inputNode.installTap(onBus: 0, bufferSize: 4096, format: hwFormat) { [weak self] buffer, _ in
-            guard let self, !self.abandoned else { return }
-            tapCount += 1
-            if tapCount <= 3 || tapCount % 50 == 0 {
-                pttLog("tap #\(tapCount) frames=\(buffer.frameLength) rms=\(Self.rms(buffer))")
+        var objcError: NSError?
+        let installed = HSCatchObjCException({
+            inputNode.removeTap(onBus: 0)
+            inputNode.installTap(onBus: 0, bufferSize: 4096, format: hwFormat) { [weak self] buffer, _ in
+                guard let self, !self.abandoned else { return }
+                tapCount += 1
+                if tapCount <= 3 || tapCount % 50 == 0 {
+                    pttLog("tap #\(tapCount) frames=\(buffer.frameLength) rms=\(Self.rms(buffer))")
+                }
+                guard let out = Self.convert(buffer, monoFormat: monoHW, converter: converter) else { return }
+                self.amplitude.send(Self.rms(out))
+                self.chunks.send(out)
             }
-            guard let out = Self.convert(buffer, monoFormat: monoHW, converter: converter) else { return }
-            self.amplitude.send(Self.rms(out))
-            self.chunks.send(out)
+            engine.prepare()
+        }, &objcError)
+        guard installed else {
+            pttLog("AudioRecorder: installTap raised \(objcError?.localizedDescription ?? "?") — rebuilding engine")
+            dropEngine()
+            throw AudioRecorderError.formatChanged
         }
-        engine.prepare()
         do {
-            try engine.start()
+            var startError: NSError?
+            var thrown: Error?
+            if !HSCatchObjCException({
+                do { try engine.start() } catch { thrown = error }
+            }, &startError) {
+                throw startError ?? AudioRecorderError.formatChanged
+            }
+            if let thrown { throw thrown }
         } catch {
             pttLog("engine.start failed: \(error) — rebuilding engine")
-            inputNode.removeTap(onBus: 0)
+            _ = HSCatchObjCException({ inputNode.removeTap(onBus: 0) }, nil)
             dropEngine()
             throw error
         }
@@ -206,8 +242,10 @@ private final class Capture {
 
     private func teardown() {
         guard isRecording, let engine else { isRecording = false; return }
-        engine.inputNode.removeTap(onBus: 0)
-        engine.stop()
+        _ = HSCatchObjCException({
+            engine.inputNode.removeTap(onBus: 0)
+            engine.stop()
+        }, nil)
         isRecording = false
     }
 

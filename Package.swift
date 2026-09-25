@@ -13,15 +13,20 @@ let package = Package(
     ],
     targets: [
         .target(
+            name: "ObjCCatch",
+            path: "Sources/ObjCCatch"
+        ),
+        .target(
             name: "HoldSpeakCore",
             dependencies: [
+                "ObjCCatch",
                 .product(name: "GRDB", package: "GRDB.swift"),
             ],
             path: "Sources/Core"
         ),
         .testTarget(
             name: "HoldSpeakCoreTests",
-            dependencies: ["HoldSpeakCore"],
+            dependencies: ["HoldSpeakCore", "ObjCCatch"],
             path: "Tests"
         ),
     ]
