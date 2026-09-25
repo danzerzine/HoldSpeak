@@ -16,10 +16,10 @@ final class MenuBarController {
 
         if let btn = statusItem.button {
             let img: NSImage?
-            if let url = Bundle.main.url(forResource: "radio", withExtension: "svg"),
-               let svg = NSImage(contentsOf: url) {
+            if let radio = BundledIcon.radio {
+                // Copy: the shared image is also drawn by the popover at its own size.
+                let svg = radio.copy() as! NSImage
                 svg.size = NSSize(width: 18, height: 18)
-                svg.isTemplate = true
                 img = svg
             } else {
                 img = NSImage(systemSymbolName: "antenna.radiowaves.left.and.right",

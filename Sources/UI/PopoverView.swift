@@ -263,16 +263,24 @@ extension Notification.Name {
     static let openPreferences = Notification.Name("openPreferences")
 }
 
+/// Bundled SVG icons, loaded from disk once and shared by the popover and the
+/// status item. Template images so they follow the menu bar / label tint.
+enum BundledIcon {
+    static let radio: NSImage? = load("radio")
+    static let settings: NSImage? = load("settings")
+
+    private static func load(_ name: String) -> NSImage? {
+        guard let url = Bundle.main.url(forResource: name, withExtension: "svg"),
+              let img = NSImage(contentsOf: url) else { return nil }
+        img.isTemplate = true
+        return img
+    }
+}
+
 @ViewBuilder
 var radioIcon: some View {
-    if let url = Bundle.main.url(forResource: "radio", withExtension: "svg"),
-       let nsimg = NSImage(contentsOf: url) {
-        let templated: NSImage = {
-            let copy = nsimg.copy() as! NSImage
-            copy.isTemplate = true
-            return copy
-        }()
-        Image(nsImage: templated).resizable().scaledToFit()
+    if let img = BundledIcon.radio {
+        Image(nsImage: img).resizable().scaledToFit()
     } else {
         Image(systemName: "antenna.radiowaves.left.and.right").resizable().scaledToFit()
     }
@@ -280,14 +288,8 @@ var radioIcon: some View {
 
 @ViewBuilder
 var settingsIcon: some View {
-    if let url = Bundle.main.url(forResource: "settings", withExtension: "svg"),
-       let nsimg = NSImage(contentsOf: url) {
-        let templated: NSImage = {
-            let copy = nsimg.copy() as! NSImage
-            copy.isTemplate = true
-            return copy
-        }()
-        Image(nsImage: templated).resizable().scaledToFit()
+    if let img = BundledIcon.settings {
+        Image(nsImage: img).resizable().scaledToFit()
     } else {
         Image(systemName: "gearshape").resizable().scaledToFit()
     }
