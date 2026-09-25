@@ -28,6 +28,7 @@ final class OverlayWindow {
 
     func show(anchor menuBarIconFrame: CGRect?) {
         reposition(anchor: menuBarIconFrame)
+        HUDAmplitudeModel.shared.start()
         panel.alphaValue = 0
         panel.orderFrontRegardless()
         NSAnimationContext.runAnimationGroup { ctx in
@@ -37,6 +38,7 @@ final class OverlayWindow {
     }
 
     func hide() {
+        HUDAmplitudeModel.shared.stop()
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.15
             panel.animator().alphaValue = 0

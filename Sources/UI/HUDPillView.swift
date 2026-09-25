@@ -7,8 +7,16 @@ final class HUDAmplitudeModel: ObservableObject {
     private var timer: Timer?
     private var target: Float = 0
     private var displayed: Float = 0
-    private init() {
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30, repeats: true) { [weak self] _ in
+    private init() {}
+
+    /// Runs the 30 Hz smoothing timer; only needed while the HUD is on screen.
+    /// Starts from flat bars, as if the model had decayed while hidden.
+    func start() {
+        guard timer == nil else { return }
+        target = 0
+        displayed = 0
+        bars = Array(repeating: 0, count: bars.count)
+        let timer = Timer(timeInterval: 1.0 / 30, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 guard let self else { return }
                 let alpha: Float = self.target > self.displayed ? 0.5 : 0.15
@@ -17,8 +25,15 @@ final class HUDAmplitudeModel: ObservableObject {
                 self.bars.append(self.displayed)
             }
         }
-        RunLoop.main.add(timer!, forMode: .common)
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
     }
+
+    func stop() {
+        timer?.invalidate()
+        timer = nil
+    }
+
     func push(_ amp: Float) {
         let db = 20 * log10(max(amp, 1e-6))
         let norm = (db + 55) / 32
