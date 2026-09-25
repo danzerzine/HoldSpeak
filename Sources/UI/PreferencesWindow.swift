@@ -282,7 +282,8 @@ struct PreferencesView: View {
         case .systemDefault: return "System default"
         case .avoidBluetooth: return "Built-in if default is Bluetooth"
         case .device(let uid):
-            return inputDevices.first(where: { $0.uid == uid })?.name ?? "Disconnected device"
+            guard let d = inputDevices.first(where: { $0.uid == uid }) else { return "Disconnected device" }
+            return d.isContinuity ? "\(d.name) (slow to start)" : d.name
         }
     }
 
@@ -296,7 +297,8 @@ struct PreferencesView: View {
                         Text(inputLabel(.systemDefault)).tag(InputSelection.systemDefault)
                         Divider()
                         ForEach(inputDevices) { d in
-                            Text(d.name).tag(InputSelection.device(uid: d.uid))
+                            Text(d.isContinuity ? "\(d.name) (slow to start)" : d.name)
+                                .tag(InputSelection.device(uid: d.uid))
                         }
                     }
                     Text("Recording through a Bluetooth mic makes headphone audio stutter and drop in quality.")

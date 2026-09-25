@@ -21,7 +21,8 @@ public final class AudioRecorder {
     public let chunks = PassthroughSubject<AVAudioPCMBuffer, Never>()
     public let failures = PassthroughSubject<Error, Never>()
 
-    public var watchdogTimeout: TimeInterval = 4
+    /// Real HAL hangs last minutes to hours; Continuity (iPhone) mics can take ~5s to wake.
+    public var watchdogTimeout: TimeInterval = 10
 
     private var capture: Capture
 

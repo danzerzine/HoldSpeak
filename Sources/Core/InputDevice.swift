@@ -52,6 +52,11 @@ public enum InputDevice {
             transport == kAudioDeviceTransportTypeBluetooth || transport == kAudioDeviceTransportTypeBluetoothLE
         }
         public var isBuiltIn: Bool { transport == kAudioDeviceTransportTypeBuiltIn }
+        /// iPhone mic via Continuity: takes seconds to wake, so push-to-talk loses the start.
+        public var isContinuity: Bool {
+            transport == kAudioDeviceTransportTypeContinuityCaptureWired
+                || transport == kAudioDeviceTransportTypeContinuityCaptureWireless
+        }
     }
 
     /// Devices that have at least one input stream.

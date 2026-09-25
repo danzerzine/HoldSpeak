@@ -44,6 +44,8 @@ public enum TextCleaner {
         "thank you",
         "thank you very much",
         "thank you so much",
+        "you",
+        "bye",
         "please subscribe",
         "subscribe to the channel",
         "like and subscribe",

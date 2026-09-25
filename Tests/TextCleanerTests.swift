@@ -76,6 +76,12 @@ final class TextCleanerTests: XCTestCase {
         XCTAssertEqual(TextCleaner.clean("Продолжение следует..."), "")
     }
 
+    func test_hallucination_dropsBareYouFromNoise() {
+        XCTAssertEqual(TextCleaner.clean("you", terminology: [], autoPunctuation: true, autoCapitalize: true), "")
+        XCTAssertEqual(TextCleaner.clean("You.", terminology: [], autoPunctuation: true, autoCapitalize: true), "")
+        XCTAssertNotEqual(TextCleaner.clean("you know", terminology: [], autoPunctuation: true, autoCapitalize: true), "")
+    }
+
     func test_hallucination_dropsBareThanksFromSilence() {
         XCTAssertEqual(TextCleaner.clean("Thank you."), "")
         XCTAssertEqual(TextCleaner.clean("thank you"), "")
