@@ -11,26 +11,12 @@ public final class TranscriptionEngine {
     /// WhisperKit instances are never built concurrently.
     private var loadTask: Task<Void, Error>?
     private var accumulated: [Float] = []
-    private var promptTokens: [Int]?
-    private var terminologyObserver: NSObjectProtocol?
-    private var activeLanguageObserver: NSObjectProtocol?
-
-    private let baseInitialPrompt =
-        "Смешанная русско-английская речь. Сохраняй английские термины в оригинале: meeting, deadline, pull request."
 
     // Tuning constants (exposed as `private static` for easy adjustment).
     private static let codeSwitchDeltaThreshold: Float = 0.25
     private static let codeSwitchMinProb: Float = 0.15
-    private static let promptTokenBudget: Int = 60
 
     private let vad = SilenceTrimmer()
-
-    /// When true, the base + terminology prompt is passed to Whisper's decoder as
-    /// `promptTokens`. This biases the model toward those terms but also disables
-    /// WhisperKit's prefill KV-cache path (see TextDecoder.swift in WhisperKit), which
-    /// in our tests caused intermittent empty/corrupted results. Terminology replacement
-    /// still runs unconditionally as post-processing in TextCleaner.
-    private static let usePromptBiasing = false
 
     private static let whisperCodes: Set<String> = [
         "en","zh","de","es","ru","ko","fr","ja","pt","tr","pl","ca","nl","ar","sv","it","id","hi","fi","vi","he","uk",
@@ -48,31 +34,7 @@ public final class TranscriptionEngine {
         return codes.isEmpty ? ["en"] : Array(NSOrderedSet(array: codes)) as? [String] ?? ["en"]
     }
 
-    public init() {
-        terminologyObserver = NotificationCenter.default.addObserver(
-            forName: .terminologyChanged, object: nil, queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.rebuildPromptTokens()
-            }
-        }
-        activeLanguageObserver = NotificationCenter.default.addObserver(
-            forName: .terminologyActiveLanguageChanged, object: nil, queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.rebuildPromptTokens()
-            }
-        }
-    }
-
-    deinit {
-        if let obs = terminologyObserver {
-            NotificationCenter.default.removeObserver(obs)
-        }
-        if let obs = activeLanguageObserver {
-            NotificationCenter.default.removeObserver(obs)
-        }
-    }
+    public init() {}
 
     public func preload(model: WhisperModelID) async throws {
         requestedModelID = model
@@ -100,25 +62,6 @@ public final class TranscriptionEngine {
                                       download: false)
         kit = try await WhisperKit(config)
         currentModelID = model
-        rebuildPromptTokens()
-    }
-
-    private func rebuildPromptTokens() {
-        guard kit != nil else { return }
-        let hint = TerminologyStore.shared.promptHint(for: TerminologyStore.shared.activeLanguage)
-        let fullPrompt = hint.isEmpty
-            ? baseInitialPrompt
-            : baseInitialPrompt + " Термины: " + hint + "."
-        promptTokens = tokenizePrompt(fullPrompt, budget: Self.promptTokenBudget)
-    }
-
-    private func tokenizePrompt(_ prompt: String, budget: Int) -> [Int]? {
-        guard let tokenizer = kit?.tokenizer else { return nil }
-        let encoded = tokenizer.encode(text: " " + prompt)
-        if encoded.isEmpty { return nil }
-        if encoded.count <= budget { return encoded }
-        pttLog("TranscriptionEngine: prompt truncated \(encoded.count) → \(budget) tokens")
-        return Array(encoded.prefix(budget))
     }
 
     /// Hands over everything fed since the last call and starts a fresh buffer.
@@ -209,7 +152,9 @@ public final class TranscriptionEngine {
             detectLanguage: language == nil,
             skipSpecialTokens: true,
             withoutTimestamps: true,
-            promptTokens: Self.usePromptBiasing ? promptTokens : nil,
+            // No promptTokens: prompt biasing disables WhisperKit's prefill KV-cache
+            // path, which caused intermittent empty/corrupted results. Terminology is
+            // applied after transcription by TextCleaner instead.
             suppressBlank: false,
             compressionRatioThreshold: 2.4,
             logProbThreshold: -1.5,

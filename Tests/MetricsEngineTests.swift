@@ -10,7 +10,6 @@ private final class MockStore: HistoryStoring {
     var recentSums: (Int, Int) = (0, 0)
     func append(_ record: TranscriptionRecord) throws -> TranscriptionRecord { record }
     func recent(limit: Int) throws -> [TranscriptionRecord] { [] }
-    func totalWords() throws -> Int { totalSums.0 }
     func sumsSince(_ unixMs: Int64) throws -> (words: Int, durationMs: Int) {
         unixMs == 0 ? totalSums : recentSums
     }

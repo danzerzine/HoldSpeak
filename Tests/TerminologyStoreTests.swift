@@ -64,22 +64,6 @@ final class TerminologyStoreTests: XCTestCase {
     }
 
     @MainActor
-    func test_promptHintTruncatesByChars() {
-        let store = newStore()
-        for i in 0..<200 {
-            store.add(TerminologyEntry(canonical: "term\(i)", variants: []))
-        }
-        let hint = store.promptHint(maxChars: 60)
-        XCTAssertLessThanOrEqual(hint.count, 60)
-        XCTAssertTrue(hint.hasPrefix("term0"))
-    }
-
-    @MainActor
-    func test_promptHintEmpty() {
-        XCTAssertEqual(newStore().promptHint(), "")
-    }
-
-    @MainActor
     func test_perLanguageSetsAreIndependent() {
         let dir = tempDir()
         let ruStore = newStore(directory: dir, language: "ru")

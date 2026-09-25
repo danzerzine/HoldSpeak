@@ -19,7 +19,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var onboardingWin: NSWindow?
     private var modelsVM: ModelsViewModel!
     private var cancellables = Set<AnyCancellable>()
-    private var currentAmplitude: Float = 0
     /// Last values acted on, so unrelated defaults writes don't re-trigger them.
     private var appliedPrimaryLanguage: PrimaryLanguage?
     private var appliedModelID: WhisperModelID?
@@ -167,9 +166,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         recorder.amplitude
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] amp in
-                guard let self else { return }
-                self.currentAmplitude = amp
+            .sink { amp in
                 HUDAmplitudeModel.shared.push(amp)
             }
             .store(in: &cancellables)

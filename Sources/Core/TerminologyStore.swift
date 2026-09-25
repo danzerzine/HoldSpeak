@@ -17,7 +17,6 @@ public struct TerminologyEntry: Codable, Identifiable, Hashable {
 
 public extension Notification.Name {
     static let terminologyChanged = Notification.Name("HoldSpeak.terminologyChanged")
-    static let terminologyActiveLanguageChanged = Notification.Name("HoldSpeak.terminologyActiveLanguageChanged")
 }
 
 @MainActor
@@ -88,7 +87,6 @@ public final class TerminologyStore: ObservableObject {
         guard !code.isEmpty, code != activeLanguage else { return }
         activeLanguage = code
         loadActive()
-        NotificationCenter.default.post(name: .terminologyActiveLanguageChanged, object: nil)
     }
 
     public func entries(for language: String) -> [TerminologyEntry] {
@@ -180,21 +178,5 @@ public final class TerminologyStore: ObservableObject {
             entries.append(contentsOf: defaults.filter { !existing.contains($0.canonical.lowercased()) })
         }
         persistActive()
-    }
-
-    // MARK: - Prompt hint
-
-    /// Comma-joined canonical forms, truncated so that the result fits into roughly `maxChars` characters
-    /// (rough proxy for ~200 WhisperKit tokens using ~4 chars/token). Final tokenizer-aware truncation
-    /// lives in `TranscriptionEngine.tokenizePrompt`.
-    public func promptHint(for language: String? = nil, maxChars: Int = 800) -> String {
-        let list = language.map { entries(for: $0) } ?? entries
-        var out = ""
-        for entry in list {
-            let candidate = out.isEmpty ? entry.canonical : out + ", " + entry.canonical
-            if candidate.count > maxChars { break }
-            out = candidate
-        }
-        return out
     }
 }

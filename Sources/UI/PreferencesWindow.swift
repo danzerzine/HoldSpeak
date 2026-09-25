@@ -205,13 +205,13 @@ struct PreferencesView: View {
             }
 
             labeledRow("HUD position") {
-                styledDropdown(selection: $prefs.hudPosition, width: 240, current: prefs.hudPosition.label) {
+                StyledDropdown(selection: $prefs.hudPosition, width: 240, current: prefs.hudPosition.label) {
                     ForEach(HUDPosition.allCases) { Text($0.label).tag($0) }
                 }
             }
 
             labeledRow("Theme") {
-                styledDropdown(selection: $prefs.appTheme, width: 240, current: prefs.appTheme.label) {
+                StyledDropdown(selection: $prefs.appTheme, width: 240, current: prefs.appTheme.label) {
                     ForEach(AppTheme.allCases) { Text($0.label).tag($0) }
                 }
                 .onChange(of: prefs.appTheme) { _ in prefs.applyAppearance() }
@@ -290,7 +290,7 @@ struct PreferencesView: View {
         VStack(alignment: .leading, spacing: 18) {
             labeledRow("Microphone", alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
-                    styledDropdown(selection: $prefs.inputSelection, width: 280,
+                    StyledDropdown(selection: $prefs.inputSelection, width: 280,
                                    current: inputLabel(prefs.inputSelection)) {
                         Text(inputLabel(.avoidBluetooth)).tag(InputSelection.avoidBluetooth)
                         Text(inputLabel(.systemDefault)).tag(InputSelection.systemDefault)
@@ -310,7 +310,7 @@ struct PreferencesView: View {
 
             labeledRow("Primary language", alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
-                    styledDropdown(selection: $prefs.primaryLanguage, width: 280, current: prefs.primaryLanguage.label) {
+                    StyledDropdown(selection: $prefs.primaryLanguage, width: 280, current: prefs.primaryLanguage.label) {
                         ForEach(PrimaryLanguage.allCases) { Text($0.label).tag($0) }
                     }
                     Text("Forcing a language helps on short utterances.")
@@ -321,7 +321,7 @@ struct PreferencesView: View {
 
             labeledRow("Whisper model", alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
-                    styledDropdown(selection: $prefs.modelID, width: 280, current: prefs.modelID.label) {
+                    StyledDropdown(selection: $prefs.modelID, width: 280, current: prefs.modelID.label) {
                         ForEach(WhisperModelID.allCases) { Text($0.label).tag($0) }
                     }
                     HStack(spacing: 6) {
@@ -466,43 +466,6 @@ struct PreferencesView: View {
 
             AddressRow(label: "USDT (TRC-20)", value: "TJYkdABdvB587bsWbyCLQ25g8JmTqiXs5h")
         }
-    }
-
-    // MARK: - Styled dropdown
-
-    @ViewBuilder
-    private func styledDropdown<V: Hashable, Content: View>(
-        selection: Binding<V>,
-        width: CGFloat,
-        current: String,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        Menu {
-            Picker("", selection: selection, content: content)
-                .labelsHidden()
-                .pickerStyle(.inline)
-        } label: {
-            HStack(spacing: 8) {
-                Text(current)
-                    .font(.system(size: 13))
-                    .foregroundColor(PTT.textPrimary(scheme))
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundColor(PTT.textMuted(scheme))
-            }
-            .padding(.leading, 12)
-            .padding(.trailing, 8)
-            .frame(width: width, height: 28, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 8).fill(PTT.fieldBG(scheme)))
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(PTT.fieldBorder(scheme), lineWidth: 1))
-        }
-        .menuStyle(.button)
-        .buttonStyle(.plain)
-        .menuIndicator(.hidden)
-        .fixedSize()
     }
 }
 

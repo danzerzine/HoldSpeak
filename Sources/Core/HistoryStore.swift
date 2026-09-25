@@ -27,9 +27,8 @@ public struct TranscriptionRecord: Codable, FetchableRecord, PersistableRecord, 
 public protocol HistoryStoring {
     func append(_ record: TranscriptionRecord) throws -> TranscriptionRecord
     func recent(limit: Int) throws -> [TranscriptionRecord]
-    /// Metrics queries (`totalWords`, `sumsSince`) cover every utterance ever
-    /// appended, not just the pruned history window shown to the user.
-    func totalWords() throws -> Int
+    /// Metrics query: covers every utterance ever appended, not just the
+    /// pruned history window shown to the user.
     func sumsSince(_ unixMs: Int64) throws -> (words: Int, durationMs: Int)
     /// Clears the visible history (transcript text) only. Metrics are kept;
     /// they have their own reset via `metricsResetAtMs`.

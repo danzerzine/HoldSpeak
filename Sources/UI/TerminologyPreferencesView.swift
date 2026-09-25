@@ -6,7 +6,6 @@ struct TerminologyPreferencesView: View {
     @ObservedObject var store: TerminologyStore = .shared
     @Environment(\.colorScheme) private var scheme
 
-    @State private var selectedID: UUID?
     @State private var editing: TerminologyEntry?
     @State private var searchText: String = ""
     @FocusState private var searchFocused: Bool
@@ -89,7 +88,7 @@ struct TerminologyPreferencesView: View {
                 Text("Terminology")
                     .font(.system(size: 13))
                     .foregroundColor(PTT.textBody(scheme))
-                Text("Canonical forms replace the listed variants in transcripts, and bias Whisper toward your terms.")
+                Text("After transcription, each listed variant is replaced with its canonical form.")
                     .font(.system(size: 11))
                     .foregroundColor(PTT.textSoft(scheme))
             }
@@ -134,14 +133,6 @@ struct TerminologyPreferencesView: View {
             }
         }
         .padding(.vertical, 8)
-    }
-
-    private var list: some View {
-        LazyVStack(spacing: 6) {
-            ForEach(filteredEntries) { entry in
-                row(entry)
-            }
-        }
     }
 
     private var searchField: some View {
