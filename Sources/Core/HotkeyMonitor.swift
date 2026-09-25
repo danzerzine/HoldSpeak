@@ -13,6 +13,11 @@ public final class HotkeyMonitor {
     private var runLoopSource: CFRunLoopSource?
     private var holdStartedAt: Date?
 
+    /// Set while Preferences is capturing a new binding: events pass through
+    /// untouched so pressing the current hotkey doesn't start a dictation and
+    /// still reaches the recorder. Main thread only (the tap runs on the main run loop).
+    public static var isPaused = false
+
     private let prefs: PreferencesStore
     public init(prefs: PreferencesStore = .shared) { self.prefs = prefs }
 
@@ -68,6 +73,14 @@ public final class HotkeyMonitor {
 
     /// Returns true if the event should be consumed (dropped).
     private func handle(event: CGEvent, type: CGEventType) -> Bool {
+        if Self.isPaused {
+            // A hold in progress when capture began would never see its release.
+            if holdStartedAt != nil {
+                holdStartedAt = nil
+                events.send(.cancelHold)
+            }
+            return false
+        }
         let binding = prefs.hotkey
         switch binding.kind {
         case .modifier:

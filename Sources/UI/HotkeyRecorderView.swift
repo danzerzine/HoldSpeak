@@ -28,6 +28,7 @@ struct HotkeyRecorderView: View {
 
     private func start() {
         recording = true
+        HotkeyMonitor.isPaused = true
         previousDeviceBits = UInt64(NSEvent.modifierFlags.rawValue) & 0xFFFF
         monitor = NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged, .keyDown]) { event in
             if let b = bindingFrom(event) {
@@ -44,6 +45,7 @@ struct HotkeyRecorderView: View {
         if let m = monitor { NSEvent.removeMonitor(m) }
         monitor = nil
         recording = false
+        HotkeyMonitor.isPaused = false
     }
 
     private func bindingFrom(_ event: NSEvent) -> HotkeyBinding? {
