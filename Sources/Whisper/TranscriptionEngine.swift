@@ -5,6 +5,11 @@ import WhisperKit
 public final class TranscriptionEngine {
     private var kit: WhisperKit?
     private var currentModelID: WhisperModelID?
+    /// Most recent model asked for; a queued load that has been superseded is skipped.
+    private var requestedModelID: WhisperModelID?
+    /// Tail of the load queue — each preload waits for the previous one so two
+    /// WhisperKit instances are never built concurrently.
+    private var loadTask: Task<Void, Error>?
     private var accumulated: [Float] = []
     private var promptTokens: [Int]?
     private var terminologyObserver: NSObjectProtocol?
@@ -70,7 +75,19 @@ public final class TranscriptionEngine {
     }
 
     public func preload(model: WhisperModelID) async throws {
-        if currentModelID == model, kit != nil { return }
+        requestedModelID = model
+        let previous = loadTask
+        let task = Task { @MainActor [weak self] in
+            _ = await previous?.result
+            guard let self, self.requestedModelID == model else { return }
+            if self.currentModelID == model, self.kit != nil { return }
+            try await self.load(model: model)
+        }
+        loadTask = task
+        try await task.value
+    }
+
+    private func load(model: WhisperModelID) async throws {
         let url: URL
         if let local = ModelManager.shared.locateModel(model) {
             url = local
@@ -104,8 +121,12 @@ public final class TranscriptionEngine {
         return Array(encoded.prefix(budget))
     }
 
-    public func beginStream() {
-        accumulated.removeAll(keepingCapacity: true)
+    /// Hands over everything fed since the last call and starts a fresh buffer.
+    /// Call synchronously from the recorder's stop completion: every chunk of the
+    /// finished recording has been fed by then, and none of the next one yet.
+    public func takeSamples() -> [Float] {
+        defer { accumulated = [] }
+        return accumulated
     }
 
     public func feed(_ buffer: AVAudioPCMBuffer) {
@@ -114,11 +135,11 @@ public final class TranscriptionEngine {
         accumulated.append(contentsOf: UnsafeBufferPointer(start: ch, count: count))
     }
 
-    public func finalize() async -> (text: String, language: String?, durationMs: Int)? {
+    public func finalize(samples: [Float]) async -> (text: String, language: String?, durationMs: Int)? {
         guard let kit else { pttLog("finalize: kit is nil"); return nil }
-        guard !accumulated.isEmpty else { pttLog("finalize: accumulated empty (no audio captured)"); return nil }
-        let rawMs = Int(Double(accumulated.count) / 16.0)
-        guard let trimmed = vad.trimSilence(accumulated) else {
+        guard !samples.isEmpty else { pttLog("finalize: samples empty (no audio captured)"); return nil }
+        let rawMs = Int(Double(samples.count) / 16.0)
+        guard let trimmed = vad.trimSilence(samples) else {
             pttLog("finalize: VAD dropped buffer (raw=\(rawMs)ms)")
             return nil
         }
@@ -145,10 +166,13 @@ public final class TranscriptionEngine {
         if !isAuto {
             return PreferencesStore.shared.primaryLanguage.whisperCode
         }
-        guard preferred.count >= 2 else {
-            return preferred.first
-        }
         let detection = try await kit.detectLangauge(audioArray: samples)
+        guard preferred.count >= 2 else {
+            // Nothing to arbitrate between — trust Whisper's own pick. Returning nil
+            // here would not detect: with prefill on, WhisperKit falls back to "en".
+            pttLog("finalize detect: \(detection.language) (fewer than 2 preferred languages)")
+            return detection.language
+        }
         let ranked = preferred
             .compactMap { code -> (code: String, prob: Float)? in
                 guard let p = detection.langProbs[code] else { return nil }

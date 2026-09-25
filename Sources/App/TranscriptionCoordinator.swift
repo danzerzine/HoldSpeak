@@ -14,15 +14,29 @@ final class TranscriptionCoordinator {
 
     private let engine: TranscriptionEngine
     private let store: HistoryStore
+    /// Tail of the FIFO: each finish waits for the previous one so two transcriptions
+    /// never share the WhisperKit instance and text is inserted in dictation order.
+    private var lastFinish: Task<Outcome, Never>?
 
     init(engine: TranscriptionEngine, store: HistoryStore) {
         self.engine = engine
         self.store = store
     }
 
-    func finishRecording() async -> Outcome {
+    func finishRecording(samples: [Float]) async -> Outcome {
+        let previous = lastFinish
+        let task = Task { [weak self] () -> Outcome in
+            _ = await previous?.value
+            guard let self else { return .empty }
+            return await self.process(samples)
+        }
+        lastFinish = task
+        return await task.value
+    }
+
+    private func process(_ samples: [Float]) async -> Outcome {
         let startNs = DispatchTime.now().uptimeNanoseconds
-        guard let result = await engine.finalize() else {
+        guard let result = await engine.finalize(samples: samples) else {
             pttLog("finalize returned nil (model not loaded or empty audio)")
             return .empty
         }

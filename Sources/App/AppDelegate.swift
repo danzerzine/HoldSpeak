@@ -20,6 +20,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var modelsVM: ModelsViewModel!
     private var cancellables = Set<AnyCancellable>()
     private var currentAmplitude: Float = 0
+    /// Last values acted on, so unrelated defaults writes don't re-trigger them.
+    private var appliedPrimaryLanguage: PrimaryLanguage?
+    private var appliedModelID: WhisperModelID?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -40,6 +43,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         engine = TranscriptionEngine()
         coordinator = TranscriptionCoordinator(engine: engine, store: store)
         modelsVM = ModelsViewModel()
+        modelsVM.onDownloaded = { [weak self] id in
+            guard id == PreferencesStore.shared.modelID else { return }
+            self?.loadModel(id)
+        }
         popoverVM = PopoverViewModel(store: store, metricsEngine: metrics)
         menu = MenuBarController(viewModel: popoverVM)
         overlay = OverlayWindow(content: AnyView(hudView()))
@@ -50,19 +57,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification, object: nil, queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in self?.applyPrimaryLanguageToTerminology() }
+            Task { @MainActor in self?.handleDefaultsChange() }
         }
 
-        Task {
-            let modelID = PreferencesStore.shared.modelID
-            pttLog("Preloading model: \(modelID.rawValue)")
-            do {
-                try await engine.preload(model: modelID)
-                pttLog("Model loaded OK: \(modelID.rawValue)")
-            } catch {
-                pttLog("Model preload FAILED: \(error)")
-            }
-        }
+        appliedModelID = PreferencesStore.shared.modelID
+        loadModel(PreferencesStore.shared.modelID)
 
         NotificationCenter.default.addObserver(forName: .openPreferences, object: nil, queue: .main) { [weak self] note in
             let tab = (note.object as? String).flatMap(PrefsTab.init(rawValue:)) ?? .general
@@ -118,8 +117,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         HUDPillView()
     }
 
+    private func loadModel(_ modelID: WhisperModelID) {
+        Task {
+            pttLog("Preloading model: \(modelID.rawValue)")
+            do {
+                try await engine.preload(model: modelID)
+                pttLog("Model loaded OK: \(modelID.rawValue)")
+            } catch {
+                pttLog("Model preload FAILED: \(error)")
+            }
+        }
+    }
+
+    private func handleDefaultsChange() {
+        let prefs = PreferencesStore.shared
+        if prefs.primaryLanguage != appliedPrimaryLanguage {
+            applyPrimaryLanguageToTerminology()
+        }
+        if prefs.modelID != appliedModelID {
+            appliedModelID = prefs.modelID
+            // A model that isn't on disk yet loads once "Download selected model" finishes.
+            if ModelManager.shared.locateModel(prefs.modelID) != nil {
+                loadModel(prefs.modelID)
+            } else {
+                pttLog("Model \(prefs.modelID.rawValue) selected but not downloaded — waiting for download")
+            }
+        }
+    }
+
     private func applyPrimaryLanguageToTerminology() {
         let pref = PreferencesStore.shared.primaryLanguage
+        appliedPrimaryLanguage = pref
         guard let code = pref.whisperCode else { return } // auto → let per-utterance detection drive
         TerminologyStore.shared.setActiveLanguage(code)
     }
@@ -169,7 +197,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func startRecording() {
         pttLog("startRecording")
-        engine.beginStream()
         recorder.start(input: PreferencesStore.shared.inputSelection)
         menu.setRecording(true)
         overlay.update(AnyView(hudView()))
@@ -178,7 +205,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func cancelRecording() {
         pttLog("cancelRecording (tap shorter than hold threshold)")
-        recorder.stop()
+        recorder.stop { [weak self] in
+            _ = self?.engine.takeSamples() // discard the tap's audio
+        }
         menu.setRecording(false)
         overlay.hide()
     }
@@ -188,9 +217,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.setRecording(false)
         overlay.hide()
         recorder.stop { [weak self] in
+            guard let self else { return }
+            // Take the samples now, synchronously: the next recording's chunks can
+            // arrive on main as soon as this completion returns.
+            let samples = self.engine.takeSamples()
             Task { @MainActor in
-                guard let self else { return }
-                switch await self.coordinator.finishRecording() {
+                switch await self.coordinator.finishRecording(samples: samples) {
                 case .empty:
                     return
                 case .skippedSecureField:

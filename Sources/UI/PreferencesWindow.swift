@@ -1,10 +1,13 @@
 import SwiftUI
 import AppKit
+import ServiceManagement
 
 @MainActor
 final class ModelsViewModel: ObservableObject {
     @Published var downloading = false
     @Published var progress: Double = 0
+    /// Called on main after a successful download, so the engine can load the model.
+    var onDownloaded: ((WhisperModelID) -> Void)?
 
     func isLocated(_ id: WhisperModelID) -> Bool { ModelManager.shared.locateModel(id) != nil }
 
@@ -20,6 +23,7 @@ final class ModelsViewModel: ObservableObject {
             _ = try await ModelManager.shared.download(id) { [weak self] p in
                 Task { @MainActor in self?.progress = p }
             }
+            onDownloaded?(id)
         } catch {
             NSLog("Model download failed: \(error)")
         }
@@ -101,6 +105,29 @@ struct PreferencesView: View {
         .onReceive(NotificationCenter.default.publisher(for: .historyDidChange)) { _ in
             if tab == .history { loadHistory() }
         }
+    }
+
+    /// `.requiresApproval` counts as on: the item is registered, the user just has
+    /// to allow it in System Settings → Login Items.
+    private func syncLaunchAtLogin() {
+        let status = SMAppService.mainApp.status
+        let on = status == .enabled || status == .requiresApproval
+        if prefs.launchAtLogin != on { prefs.launchAtLogin = on }
+    }
+
+    private func applyLaunchAtLogin(_ enabled: Bool) {
+        let service = SMAppService.mainApp
+        let registered = service.status == .enabled || service.status == .requiresApproval
+        do {
+            if enabled, !registered {
+                try service.register()
+            } else if !enabled, registered {
+                try service.unregister()
+            }
+        } catch {
+            pttLog("Launch at login \(enabled ? "register" : "unregister") failed: \(error)")
+        }
+        syncLaunchAtLogin()
     }
 
     private var colorSchemeOverride: ColorScheme? {
@@ -198,6 +225,8 @@ struct PreferencesView: View {
                 }
                 .toggleStyle(.switch)
                 .controlSize(.small)
+                .onAppear(perform: syncLaunchAtLogin)
+                .onChange(of: prefs.launchAtLogin, perform: applyLaunchAtLogin)
             }
 
             labeledRow("Updates", alignment: .top) {
