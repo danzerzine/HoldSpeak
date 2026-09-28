@@ -147,7 +147,18 @@ private final class Capture {
             let status = AudioUnitSetProperty(unit, kAudioOutputUnitProperty_CurrentDevice,
                                               kAudioUnitScope_Global, 0, &id,
                                               UInt32(MemoryLayout<AudioDeviceID>.size))
-            if status != noErr { pttLog("AudioRecorder: selecting input device \(device) failed (\(status)) — using system default") }
+            if status != noErr {
+                pttLog("AudioRecorder: selecting input device \(device) failed (\(status)) — using system default")
+            } else {
+                // After an explicit device switch the unit keeps the engine rate (taken from the
+                // output device) as its client format; if the two differ (48 kHz mic + 44.1 kHz
+                // Bluetooth speakers) the tap never receives buffers. Capture at the mic's own rate.
+                var asbd = engine.inputNode.inputFormat(forBus: 0).streamDescription.pointee
+                let fmtStatus = AudioUnitSetProperty(unit, kAudioUnitProperty_StreamFormat,
+                                                     kAudioUnitScope_Output, 1, &asbd,
+                                                     UInt32(MemoryLayout<AudioStreamBasicDescription>.size))
+                if fmtStatus != noErr { pttLog("AudioRecorder: aligning client format to device failed (\(fmtStatus))") }
+            }
         }
         configObserver = NotificationCenter.default.addObserver(
             forName: .AVAudioEngineConfigurationChange, object: engine, queue: nil
@@ -188,10 +199,9 @@ private final class Capture {
             throw AudioRecorderError.invalidInputFormat(sampleRate: hwFormat.sampleRate,
                                                         channels: hwFormat.channelCount)
         }
-        guard deviceRate == hwFormat.sampleRate else {
-            dropEngine()
-            throw AudioRecorderError.formatChanged
-        }
+        // deviceRate may legitimately differ from hwFormat: the input unit resamples to the
+        // engine rate (e.g. 48 kHz mic + 44.1 kHz Bluetooth speakers). A real mid-start
+        // format switch surfaces as an installTap exception below.
         let monoHW = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: hwFormat.sampleRate,
                                    channels: 1, interleaved: false)!
         guard let converter = AVAudioConverter(from: monoHW, to: Self.targetFormat) else {
@@ -257,8 +267,8 @@ private final class Capture {
         // Selecting a specific device fires a change right after start while the engine
         // keeps running in the same format — rebuilding then would drop the first second.
         if let engine, engine.isRunning, let tapFormat,
-           engine.inputNode.inputFormat(forBus: 0).sampleRate == tapFormat.sampleRate,
-           engine.inputNode.inputFormat(forBus: 0).channelCount == tapFormat.channelCount {
+           engine.inputNode.outputFormat(forBus: 0).sampleRate == tapFormat.sampleRate,
+           engine.inputNode.outputFormat(forBus: 0).channelCount == tapFormat.channelCount {
             pttLog("AVAudioEngineConfigurationChange ignored (engine still running, format unchanged)")
             return
         }
