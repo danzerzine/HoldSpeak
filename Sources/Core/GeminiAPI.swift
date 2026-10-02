@@ -10,6 +10,12 @@ public enum GeminiModelID: String, CaseIterable, Identifiable {
         case .flashLite:  return "3.5 Flash-Lite — better with terms, slower"
         }
     }
+    public var shortLabel: String {
+        switch self {
+        case .transcribe: return "3.5 Transcribe"
+        case .flashLite:  return "3.5 Flash-Lite"
+        }
+    }
     /// The dedicated transcription model rejects thinking settings; Flash-Lite needs
     /// minimal thinking or a reply takes 5–10 s.
     public var supportsThinkingConfig: Bool { self != .transcribe }

@@ -216,11 +216,12 @@ struct PreferencesView: View {
                         Slider(value: .init(get: { Double(prefs.holdThresholdMs) },
                                             set: { prefs.holdThresholdMs = Int($0) }),
                                in: 50...800, step: 10)
-                            .frame(width: 280)
+                            .frame(width: 260)
                         Text("\(prefs.holdThresholdMs) ms")
                             .font(.system(size: 13, weight: .medium))
                             .foregroundColor(PTT.textPrimary(scheme))
                             .monospacedDigit()
+                            .fixedSize()
                     }
                     Text("Short taps pass through. Holds longer start recording.")
                         .font(.system(size: 11))

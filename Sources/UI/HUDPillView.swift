@@ -93,6 +93,8 @@ struct HUDMessageView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 7)
+        // Report the full text width so the panel grows to fit instead of truncating.
+        .fixedSize()
         .background(
             RoundedRectangle(cornerRadius: 14)
                 .fill(Color.black)

@@ -72,6 +72,14 @@ public enum WhisperModelID: String, CaseIterable, Identifiable {
         case .turbo: return "Turbo — large-v3 distilled (~800 MB, recommended)"
         }
     }
+    /// For the closed dropdown, where the full label gets truncated.
+    public var shortLabel: String {
+        switch self {
+        case .tiny:  return "Tiny (~40 MB)"
+        case .small: return "Small (~250 MB)"
+        case .turbo: return "Turbo (~800 MB)"
+        }
+    }
 }
 
 public enum TranscriptionEngineKind: String {
@@ -89,10 +97,11 @@ public enum ModelChoice: Hashable, Identifiable {
         case .gemini(let m):  return m.rawValue
         }
     }
+    /// Shown in the closed dropdown; the open menu lists the full model labels.
     public var label: String {
         switch self {
-        case .whisper(let m): return "Whisper \(m.label)"
-        case .gemini(let m):  return "Gemini \(m.label)"
+        case .whisper(let m): return "Whisper \(m.shortLabel)"
+        case .gemini(let m):  return "Gemini \(m.shortLabel)"
         }
     }
 }

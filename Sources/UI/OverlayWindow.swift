@@ -47,6 +47,9 @@ final class OverlayWindow {
         flashHide?.cancel()
         flashHide = nil
         generation += 1
+        // The hosting view resizes the panel to its content, which differs between
+        // the recording pill and a message; size it now so it is centred correctly.
+        panel.setContentSize(hosting.fittingSize)
         reposition(anchor: anchor)
         panel.alphaValue = 0
         panel.orderFrontRegardless()
