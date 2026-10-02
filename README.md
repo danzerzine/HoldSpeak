@@ -90,7 +90,7 @@ Privacy: with Gemini, each dictation's audio is sent to Google. Whisper stays th
 
 The delay between releasing the hotkey and text appearing in the input is dominated by the Whisper forward pass. Two levers:
 
-- **Pick a smaller model.** Preferences → Audio → *Whisper model*:
+- **Pick a smaller model.** Preferences → Audio → *Model*:
   - **Tiny (~40 MB)** — fastest (~80–150 ms on Apple Silicon for a short utterance), lowest quality. Good for quick English/single-language dictation.
   - **Small (~250 MB)** — middle ground.
   - **Turbo (~800 MB)** — default; best quality but ~400–800 ms per utterance.
@@ -156,8 +156,8 @@ Whisper reliably recognizes common speech but routinely mangles IT terminology i
 
 ## Architecture
 
-- `Sources/Core` — pure logic (hotkey, recorder, inserter, text cleaner, storage, metrics, model manager)
-- `Sources/Whisper` — thin wrapper around WhisperKit
+- `Sources/Core` — pure logic (hotkey, recorder, inserter, text cleaner, storage, metrics, Gemini API client, Keychain)
+- `Sources/Whisper` — transcription engines: WhisperKit (local) and Gemini (cloud) behind one `TranscriptionEngine` facade, model manager
 - `Sources/UI` — SwiftUI: menu bar popover, preferences, onboarding, HUD
 - `Sources/App` — AppDelegate and entry point
 
