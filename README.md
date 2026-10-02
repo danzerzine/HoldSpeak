@@ -6,7 +6,7 @@
 
 **Website: [holdspeak.app](https://holdspeak.app/)** · [Download](https://github.com/timmal/HoldSpeak/releases/latest) · [Free Superwhisper alternative — comparison](https://holdspeak.app/superwhisper-alternative.html)
 
-Local push-to-talk dictation for macOS. HoldSpeak is a **menu bar app** (no Dock icon, no windows in the way) — it lives in the status bar and stays out of your workflow until you hold the hotkey. Speak, release — recognized text is inserted into the focused input. No cloud: Whisper runs on GPU via WhisperKit.
+Local push-to-talk dictation for macOS. HoldSpeak is a **menu bar app** (no Dock icon, no windows in the way) — it lives in the status bar and stays out of your workflow until you hold the hotkey. Speak, release — recognized text is inserted into the focused input. Local by default: Whisper runs on GPU via WhisperKit. Optionally, you can switch to Google Gemini with your own API key.
 
 <p align="center">
   <img src="docs/screenshots/popover.webp?v=2" width="320" alt="Menu bar popover" />
@@ -17,6 +17,7 @@ A free, local alternative to paid Whisper wrappers. Built for one reason: talkin
 ## Features
 
 - **Local transcription** through WhisperKit (CoreML, GPU)
+- **Optional cloud engine** — Google Gemini with your own API key, for higher accuracy on mixed-language speech and jargon
 - **Code-switching RU/EN/UK and more** — in auto mode the language is chosen only from the ones you have in System Settings → Language & Region
 - **Insertion without clipboard** — via `CGEventKeyboardSetUnicodeString`; password fields are skipped
 - **Menu bar popover** with the last 10 transcriptions (click to copy) and metrics: total words, 7-day avg WPM
@@ -30,7 +31,7 @@ Grab the latest DMG from the [Releases page](https://github.com/timmal/HoldSpeak
 
 Because the app is self-signed, macOS will block the first launch. Open **System Settings → Privacy & Security**, scroll to the message *"HoldSpeak was blocked…"* and click **Open Anyway**. Confirm with Touch ID / password. After that it launches normally from Launchpad / Applications. The app runs as a menu bar extra — look for the radio icon in the right side of your menu bar; it won't appear in the Dock or Cmd-Tab.
 
-On first launch, grant three permissions:
+On first launch, choose how speech is recognized — **Whisper** (on this Mac, downloads a model) or **Gemini** (Google cloud, asks for your API key) — then grant three permissions:
 
 - **Microphone** — for audio capture
 - **Accessibility** — for the global hotkey and text insertion
@@ -53,6 +54,23 @@ Your preferences, history, and downloaded models live in `~/Library/Application 
 The default is **Turbo (large-v3 distilled, ~800 MB)** — the best quality/speed trade-off. You can switch to Tiny or Small in Preferences → Audio.
 
 If you already have MacWhisper / another WhisperKit client installed, their models will be picked up automatically. Otherwise the first model is downloaded to `~/Library/Application Support/HoldSpeak/Models/`.
+
+To free disk space, Preferences → Audio → **Downloaded models → Delete…** removes every model HoldSpeak downloaded. Models that belong to MacWhisper or other apps are left alone.
+
+### Gemini (optional, cloud)
+
+Pick a Gemini model in Preferences → Audio → **Model** (or choose Gemini during onboarding) and paste an API key:
+
+1. Create a key at [Google AI Studio → API keys](https://aistudio.google.com/apikey).
+2. **Set up billing** for the key's project in AI Studio. Without billing the key runs on the free tier, which stops after a couple dozen dictations a day — HoldSpeak then shows *"Gemini daily limit reached — set up billing"* in the HUD.
+3. Paste the key in HoldSpeak and click **Save**. The key is checked with Google and stored in the macOS Keychain, never in preferences files; it survives app updates.
+
+Models:
+
+- **3.5 Transcribe** (default) — dedicated speech-to-text, ~2 s per dictation, about **$0.30 per hour of speech**.
+- **3.5 Flash-Lite** — cheaper (~$0.06/hour) and better at following the terminology dictionary, but response time varies more.
+
+Privacy: with Gemini, each dictation's audio is sent to Google. Whisper stays the default and never sends anything anywhere. Text cleanup, the "Add period" / "Capitalize" options and the terminology dictionary apply to both engines; Gemini also receives your dictionary's terms as spelling hints.
 
 ### Reducing insertion latency
 
@@ -80,7 +98,7 @@ By default, presses shorter than **150 ms** don't start recording — the key be
 ## Preferences
 
 - **General** — hotkey, hold threshold, HUD position (under the icon / bottom center), theme (Auto / Light / Dark), launch at login, update check
-- **Audio** — language (Auto / Russian / English), Whisper model, model download
+- **Audio** — microphone, language, model (Whisper or Gemini), model download / deletion, Gemini API key
 - **Terms** — terminology dictionary (see below)
 - **History** — clear history and reset metrics
 - **Support**

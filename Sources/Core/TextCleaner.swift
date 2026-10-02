@@ -74,7 +74,8 @@ public enum TextCleaner {
         _ input: String,
         terminology: [TerminologyEntry] = [],
         autoPunctuation: Bool = true,
-        autoCapitalize: Bool = true
+        autoCapitalize: Bool = true,
+        dropHallucinations: Bool = true
     ) -> String {
         var s = input
         for rule in rules {
@@ -85,7 +86,8 @@ public enum TextCleaner {
         guard !s.isEmpty else { return "" }
         if s.rangeOfCharacter(from: .alphanumerics) == nil { return "" }
         // Drop the utterance entirely if its normalized form is a known Whisper hallucination.
-        if isHallucination(s) { return "" }
+        // Off for Gemini: it doesn't invent these on silence, so "Спасибо" is real speech.
+        if dropHallucinations, isHallucination(s) { return "" }
         s = canonicalize(s, terminology: terminology)
         if autoCapitalize {
             s = s.prefix(1).uppercased() + s.dropFirst()

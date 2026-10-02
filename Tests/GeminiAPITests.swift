@@ -1,0 +1,116 @@
+import XCTest
+@testable import HoldSpeakCore
+
+final class GeminiAPITests: XCTestCase {
+    private func json(_ object: Any) -> Data {
+        try! JSONSerialization.data(withJSONObject: object)
+    }
+
+    // MARK: WAV
+
+    func test_wav_hasPCMHeaderAndSize() {
+        let data = GeminiAPI.wav([0, 0.5, -0.5, 1])
+        XCTAssertEqual(data.count, 44 + 4 * 2)
+        XCTAssertEqual(String(decoding: data[0..<4], as: UTF8.self), "RIFF")
+        XCTAssertEqual(String(decoding: data[8..<12], as: UTF8.self), "WAVE")
+        XCTAssertEqual(String(decoding: data[36..<40], as: UTF8.self), "data")
+        let rate = data[24..<28].enumerated().reduce(0) { $0 | Int($1.element) << (8 * $1.offset) }
+        XCTAssertEqual(rate, 16_000)
+    }
+
+    func test_wav_clampsSamples() {
+        let data = GeminiAPI.wav([2, -2])
+        let first = Int16(bitPattern: UInt16(data[44]) | UInt16(data[45]) << 8)
+        let second = Int16(bitPattern: UInt16(data[46]) | UInt16(data[47]) << 8)
+        XCTAssertEqual(first, Int16.max)
+        XCTAssertEqual(second, -Int16.max)
+    }
+
+    // MARK: Request
+
+    func test_prompt_includesLanguageAndTerms() {
+        let prompt = GeminiAPI.prompt(language: "ru", terms: ["pull request", "merge"])
+        XCTAssertTrue(prompt.contains("mostly in Russian"))
+        XCTAssertTrue(prompt.contains("pull request, merge"))
+    }
+
+    func test_prompt_autoLanguageAndNoTerms() {
+        let prompt = GeminiAPI.prompt(language: nil, terms: [])
+        XCTAssertFalse(prompt.contains("mostly in"))
+        XCTAssertFalse(prompt.contains("Vocabulary"))
+    }
+
+    func test_requestBody_thinkingConfigOnlyForFlashLite() throws {
+        func config(_ model: GeminiModelID) throws -> [String: Any] {
+            let body = try GeminiAPI.requestBody(model: model, prompt: "p", wav: Data([1, 2]))
+            let obj = try JSONSerialization.jsonObject(with: body) as! [String: Any]
+            return obj["generationConfig"] as! [String: Any]
+        }
+        XCTAssertNil(try config(.transcribe)["thinkingConfig"])
+        XCTAssertNotNil(try config(.flashLite)["thinkingConfig"])
+    }
+
+    // MARK: Response
+
+    func test_extractText_regularTextParts_skipsThoughts() {
+        let data = json(["candidates": [["content": ["parts": [
+            ["text": "thinking…", "thought": true],
+            ["text": "Привет, "],
+            ["text": "мир."],
+        ]]]]])
+        XCTAssertEqual(GeminiAPI.extractText(data), "Привет, мир.")
+    }
+
+    func test_extractText_audioTranscriptionParts() {
+        let data = json(["candidates": [["content": ["parts": [
+            ["audioTranscription": ["text": "Запушим в main."]],
+            ["thoughtSignature": "abc"],
+        ]]]]])
+        XCTAssertEqual(GeminiAPI.extractText(data), "Запушим в main.")
+    }
+
+    func test_extractText_malformedIsEmpty() {
+        XCTAssertEqual(GeminiAPI.extractText(Data("nope".utf8)), "")
+        XCTAssertEqual(GeminiAPI.extractText(json(["candidates": []])), "")
+    }
+
+    // MARK: Errors
+
+    func test_failure_invalidKey() {
+        let body = json(["error": ["code": 400, "message": "API key not valid. Please pass a valid API key.",
+                                   "details": [["reason": "API_KEY_INVALID"]]]])
+        XCTAssertEqual(GeminiAPI.failure(status: 400, body: body), .invalidAPIKey)
+        XCTAssertEqual(GeminiAPI.failure(status: 403, body: Data()), .invalidAPIKey)
+    }
+
+    func test_failure_plain400IsServiceError() {
+        let body = json(["error": ["code": 400, "message": "Invalid JSON payload"]])
+        XCTAssertEqual(GeminiAPI.failure(status: 400, body: body), .serviceError(status: 400))
+    }
+
+    func test_failure_dailyQuota() {
+        let body = json(["error": ["code": 429, "status": "RESOURCE_EXHAUSTED", "details": [
+            ["@type": "type.googleapis.com/google.rpc.QuotaFailure",
+             "violations": [["quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier"]]],
+            ["@type": "type.googleapis.com/google.rpc.RetryInfo", "retryDelay": "41.5s"],
+        ]]])
+        let failure = GeminiAPI.failure(status: 429, body: body)
+        XCTAssertEqual(failure, .quotaExceeded(daily: true, retryAfterSeconds: 42))
+        XCTAssertTrue(failure.body.contains("billing"))
+    }
+
+    func test_failure_perMinuteQuota() {
+        let body = json(["error": ["code": 429, "details": [
+            ["violations": [["quotaId": "GenerateRequestsPerMinutePerProjectPerModel-FreeTier"]]],
+            ["retryDelay": "12s"],
+        ]]])
+        XCTAssertEqual(GeminiAPI.failure(status: 429, body: body), .quotaExceeded(daily: false, retryAfterSeconds: 12))
+    }
+
+    func test_retryOnlyServerErrors() {
+        XCTAssertTrue(GeminiAPI.isRetryable(status: 503))
+        XCTAssertTrue(GeminiAPI.isRetryable(status: 500))
+        XCTAssertFalse(GeminiAPI.isRetryable(status: 429))
+        XCTAssertFalse(GeminiAPI.isRetryable(status: 400))
+    }
+}

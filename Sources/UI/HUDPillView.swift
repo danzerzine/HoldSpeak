@@ -69,3 +69,33 @@ struct HUDPillView: View {
         )
     }
 }
+
+/// Shown in place of the recording pill when a dictation failed, so the reason
+/// is visible where the user is looking.
+struct HUDMessageView: View {
+    let title: String
+    let detail: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 13))
+                .foregroundColor(.orange)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.white)
+                Text(detail)
+                    .font(.system(size: 11))
+                    .foregroundColor(.white.opacity(0.75))
+            }
+            .lineLimit(1)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 7)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color.black)
+        )
+    }
+}

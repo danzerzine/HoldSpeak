@@ -10,6 +10,8 @@ final class TranscriptionCoordinator {
         case inserted
         case skippedSecureField
         case noFocus
+        /// The engine couldn't transcribe (no model, bad key, quota, network).
+        case failed(TranscriptionFailure)
     }
 
     private let engine: TranscriptionEngine
@@ -36,9 +38,14 @@ final class TranscriptionCoordinator {
 
     private func process(_ samples: [Float]) async -> Outcome {
         let startNs = DispatchTime.now().uptimeNanoseconds
-        guard let result = await engine.finalize(samples: samples) else {
-            pttLog("finalize returned nil (model not loaded or empty audio)")
+        let result: (text: String, language: String?, durationMs: Int)
+        switch await engine.finalize(samples: samples) {
+        case .text(let text, let language, let durationMs):
+            result = (text, language, durationMs)
+        case .empty:
             return .empty
+        case .failed(let failure):
+            return .failed(failure)
         }
         let elapsedMs = (DispatchTime.now().uptimeNanoseconds - startNs) / 1_000_000
         pttLog("result raw: \(logText(result.text)) lang=\(result.language ?? "?") durMs=\(result.durationMs) elapsedMs=\(elapsedMs)")
@@ -52,7 +59,8 @@ final class TranscriptionCoordinator {
             result.text,
             terminology: TerminologyStore.shared.entries(for: lang),
             autoPunctuation: prefs.autoPunctuation,
-            autoCapitalize: prefs.autoCapitalize
+            autoCapitalize: prefs.autoCapitalize,
+            dropHallucinations: prefs.engine == .whisper
         )
         pttLog("cleaned: \(logText(cleaned))")
         guard !cleaned.isEmpty else { return .empty }

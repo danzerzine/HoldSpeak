@@ -6,8 +6,12 @@ import ServiceManagement
 final class ModelsViewModel: ObservableObject {
     @Published var downloading = false
     @Published var progress: Double = 0
+    /// Disk used by models HoldSpeak downloaded itself (not other apps' copies).
+    @Published var managedBytes: Int64 = 0
     /// Called on main after a successful download, so the engine can load the model.
     var onDownloaded: ((WhisperModelID) -> Void)?
+    /// Called on main after the downloaded models were deleted.
+    var onDeleted: (() -> Void)?
 
     func isLocated(_ id: WhisperModelID) -> Bool { ModelManager.shared.locateModel(id) != nil }
 
@@ -27,6 +31,26 @@ final class ModelsViewModel: ObservableObject {
         } catch {
             NSLog("Model download failed: \(error)")
         }
+        refreshManagedSize()
+    }
+
+    func refreshManagedSize() {
+        DispatchQueue.global(qos: .utility).async {
+            let bytes = ModelManager.shared.managedBytes()
+            DispatchQueue.main.async { self.managedBytes = bytes }
+        }
+    }
+
+    func deleteManagedModels() {
+        do {
+            try ModelManager.shared.deleteManagedModels()
+            pttLog("Deleted downloaded Whisper models")
+        } catch {
+            pttLog("Deleting models failed: \(error)")
+        }
+        objectWillChange.send() // isLocated(_:) answers differently now
+        onDeleted?()
+        refreshManagedSize()
     }
 }
 
@@ -287,6 +311,18 @@ struct PreferencesView: View {
         }
     }
 
+    private func confirmDeleteModels() {
+        let size = ByteCountFormatter.string(fromByteCount: modelsVM.managedBytes, countStyle: .file)
+        let alert = NSAlert()
+        alert.messageText = "Delete downloaded Whisper models?"
+        alert.informativeText = "Frees \(size). Only models HoldSpeak downloaded are removed — copies from MacWhisper or other apps stay. You can download a model again at any time."
+        alert.addButton(withTitle: "Delete")
+        alert.addButton(withTitle: "Cancel")
+        if alert.runModal() == .alertFirstButtonReturn {
+            modelsVM.deleteManagedModels()
+        }
+    }
+
     private var audioTab: some View {
         VStack(alignment: .leading, spacing: 18) {
             labeledRow("Microphone", alignment: .top) {
@@ -308,7 +344,10 @@ struct PreferencesView: View {
                         .frame(width: 280, alignment: .leading)
                 }
             }
-            .onAppear(perform: loadInputDevices)
+            .onAppear {
+                loadInputDevices()
+                modelsVM.refreshManagedSize()
+            }
 
             labeledRow("Primary language", alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
@@ -321,43 +360,81 @@ struct PreferencesView: View {
                 }
             }
 
-            labeledRow("Whisper model", alignment: .top) {
+            labeledRow("Model", alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
-                    StyledDropdown(selection: $prefs.modelID, width: 280, current: prefs.modelID.label) {
-                        ForEach(WhisperModelID.allCases) { Text($0.label).tag($0) }
+                    StyledDropdown(selection: $prefs.modelChoice, width: 280, current: prefs.modelChoice.label) {
+                        Section("Whisper — on this Mac, free") {
+                            ForEach(WhisperModelID.allCases) { Text($0.label).tag(ModelChoice.whisper($0)) }
+                        }
+                        Section("Gemini — Google cloud, your API key") {
+                            ForEach(GeminiModelID.allCases) { Text($0.label).tag(ModelChoice.gemini($0)) }
+                        }
                     }
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(modelsVM.isLocated(prefs.modelID) ? PTT.statusGreen : PTT.textSoft(scheme))
-                            .frame(width: 8, height: 8)
-                        Text(modelsVM.status(for: prefs.modelID))
-                            .font(.system(size: 11))
-                            .foregroundColor(PTT.textMuted(scheme))
+                    if prefs.engine == .whisper {
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(modelsVM.isLocated(prefs.modelID) ? PTT.statusGreen : PTT.textSoft(scheme))
+                                .frame(width: 8, height: 8)
+                            Text(modelsVM.status(for: prefs.modelID))
+                                .font(.system(size: 11))
+                                .foregroundColor(PTT.textMuted(scheme))
+                        }
                     }
                 }
             }
 
-            labeledRow("") {
-                if modelsVM.downloading {
-                    ProgressView(value: modelsVM.progress).frame(width: 240)
-                } else {
-                    Button {
-                        Task { await modelsVM.download(prefs.modelID) }
-                    } label: {
-                        Text("Download selected model")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(modelsVM.isLocated(prefs.modelID) ? PTT.textMuted(scheme) : PTT.textPrimary(scheme))
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 6)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8).fill(PTT.buttonBG(scheme))
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8).stroke(PTT.fieldBorder(scheme), lineWidth: 1)
-                            )
+            if prefs.engine == .whisper {
+                labeledRow("") {
+                    if modelsVM.downloading {
+                        ProgressView(value: modelsVM.progress).frame(width: 240)
+                    } else {
+                        Button {
+                            Task { await modelsVM.download(prefs.modelID) }
+                        } label: {
+                            Text("Download selected model")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(modelsVM.isLocated(prefs.modelID) ? PTT.textMuted(scheme) : PTT.textPrimary(scheme))
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8).fill(PTT.buttonBG(scheme))
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8).stroke(PTT.fieldBorder(scheme), lineWidth: 1)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(modelsVM.isLocated(prefs.modelID))
                     }
-                    .buttonStyle(.plain)
-                    .disabled(modelsVM.isLocated(prefs.modelID))
+                }
+            } else {
+                labeledRow("API key", alignment: .top) {
+                    GeminiKeyEditor()
+                }
+            }
+
+            if modelsVM.managedBytes > 0, !modelsVM.downloading {
+                labeledRow("Downloaded models") {
+                    HStack(spacing: 12) {
+                        Text(ByteCountFormatter.string(fromByteCount: modelsVM.managedBytes, countStyle: .file))
+                            .font(.system(size: 13))
+                            .foregroundColor(PTT.textBody(scheme))
+                            .monospacedDigit()
+                        Button(action: confirmDeleteModels) {
+                            Text("Delete…")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(PTT.recordingRed)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8).fill(PTT.buttonBG(scheme))
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8).stroke(PTT.fieldBorder(scheme), lineWidth: 1)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
             }
 

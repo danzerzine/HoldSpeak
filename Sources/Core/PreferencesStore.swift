@@ -74,11 +74,37 @@ public enum WhisperModelID: String, CaseIterable, Identifiable {
     }
 }
 
+public enum TranscriptionEngineKind: String {
+    case whisper, gemini
+}
+
+/// One entry of the combined "Model" dropdown: a local Whisper model or a Gemini model.
+public enum ModelChoice: Hashable, Identifiable {
+    case whisper(WhisperModelID)
+    case gemini(GeminiModelID)
+
+    public var id: String {
+        switch self {
+        case .whisper(let m): return m.rawValue
+        case .gemini(let m):  return m.rawValue
+        }
+    }
+    public var label: String {
+        switch self {
+        case .whisper(let m): return "Whisper \(m.label)"
+        case .gemini(let m):  return "Gemini \(m.label)"
+        }
+    }
+}
+
 public final class PreferencesStore: ObservableObject {
     @AppStorage("hotkeyBindingJSON") private var hotkeyBindingJSON: String = ""
     @AppStorage("holdThresholdMs") public var holdThresholdMs: Int = 150
     @AppStorage("hudPosition")     public var hudPosition: HUDPosition = .bottomCenter
     @AppStorage("modelID")         public var modelID: WhisperModelID = .turbo
+    @AppStorage("geminiModel")     public var geminiModel: GeminiModelID = .transcribe
+    /// Empty until the user picks an engine in onboarding.
+    @AppStorage("transcriptionEngine") private var engineRaw: String = ""
     @AppStorage("primaryLanguage") public var primaryLanguage: PrimaryLanguage = .ru
     @AppStorage("launchAtLogin")   public var launchAtLogin: Bool = false
     @AppStorage("appTheme")        public var appTheme: AppTheme = .auto
@@ -91,6 +117,48 @@ public final class PreferencesStore: ObservableObject {
         get { InputSelection(rawValue: inputDeviceRaw) }
         set { objectWillChange.send(); inputDeviceRaw = newValue.rawValue }
     }
+
+    public var engine: TranscriptionEngineKind {
+        get { TranscriptionEngineKind(rawValue: engineRaw) ?? .whisper }
+        set { objectWillChange.send(); engineRaw = newValue.rawValue }
+    }
+
+    public var engineChosen: Bool { !engineRaw.isEmpty }
+
+    public var modelChoice: ModelChoice {
+        get { engine == .gemini ? .gemini(geminiModel) : .whisper(modelID) }
+        set {
+            switch newValue {
+            case .whisper(let m): modelID = m; engine = .whisper
+            case .gemini(let m):  geminiModel = m; engine = .gemini
+            }
+        }
+    }
+
+    private static let geminiKeyAccount = "gemini-api-key"
+    /// Read once from the Keychain, then served from memory: finalize asks on every dictation.
+    private var cachedGeminiKey: String??
+
+    public var geminiAPIKey: String? {
+        get {
+            if let cached = cachedGeminiKey { return cached }
+            let key = Keychain.string(for: Self.geminiKeyAccount)
+            cachedGeminiKey = .some(key)
+            return key
+        }
+        set {
+            objectWillChange.send()
+            if let newValue, !newValue.isEmpty {
+                Keychain.set(newValue, for: Self.geminiKeyAccount)
+                cachedGeminiKey = .some(newValue)
+            } else {
+                Keychain.delete(Self.geminiKeyAccount)
+                cachedGeminiKey = .some(nil)
+            }
+        }
+    }
+
+    public var hasGeminiKey: Bool { geminiAPIKey?.isEmpty == false }
 
     public func applyAppearance() {
         NSApp.appearance = appTheme.nsAppearance

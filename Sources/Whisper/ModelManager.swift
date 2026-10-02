@@ -42,6 +42,39 @@ public final class ModelManager {
         return nil
     }
 
+    /// True when HoldSpeak itself has downloaded at least one model (older versions
+    /// fetched one automatically on first launch).
+    public func hasManagedModels() -> Bool {
+        let items = try? FileManager.default.contentsOfDirectory(atPath: managedDirectory().path)
+        return items?.contains { !$0.hasPrefix(".") } == true
+    }
+
+    /// Bytes on disk in the folders HoldSpeak downloads into. Models found in
+    /// MacWhisper's or ~/Documents' folders belong to other apps and are not counted.
+    public func managedBytes() -> Int64 {
+        [managedDirectory(), downloadCacheDirectory()].reduce(0) { $0 + Self.size(of: $1) }
+    }
+
+    /// Deletes everything HoldSpeak downloaded; other apps' models are left alone.
+    public func deleteManagedModels() throws {
+        let fm = FileManager.default
+        for dir in [managedDirectory(), downloadCacheDirectory()] where fm.fileExists(atPath: dir.path) {
+            try fm.removeItem(at: dir)
+        }
+    }
+
+    private static func size(of dir: URL) -> Int64 {
+        guard let walker = FileManager.default.enumerator(
+            at: dir, includingPropertiesForKeys: [.totalFileAllocatedSizeKey, .isRegularFileKey]
+        ) else { return 0 }
+        var total: Int64 = 0
+        for case let url as URL in walker {
+            let values = try? url.resourceValues(forKeys: [.totalFileAllocatedSizeKey, .isRegularFileKey])
+            if values?.isRegularFile == true { total += Int64(values?.totalFileAllocatedSize ?? 0) }
+        }
+        return total
+    }
+
     public func download(_ id: WhisperModelID,
                          progress: @escaping (Double) -> Void) async throws -> URL {
         try FileManager.default.createDirectory(at: managedDirectory(), withIntermediateDirectories: true)

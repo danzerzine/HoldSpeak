@@ -29,6 +29,6 @@
 	<key>NSHumanReadableCopyright</key>
 	<string></string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>HoldSpeak transcribes your speech locally while you hold the hotkey.</string>
+	<string>HoldSpeak records your speech while you hold the hotkey and turns it into text.</string>
 </dict>
 </plist>

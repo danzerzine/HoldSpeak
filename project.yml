@@ -68,7 +68,7 @@ targets:
         CFBundleIconName: AppIcon
         CFBundleShortVersionString: "0.2.9"
         CFBundleVersion: "1"
-        NSMicrophoneUsageDescription: HoldSpeak transcribes your speech locally while you hold the hotkey.
+        NSMicrophoneUsageDescription: HoldSpeak records your speech while you hold the hotkey and turns it into text.
         NSHumanReadableCopyright: ""
     entitlements:
       path: Resources/HoldSpeak.entitlements

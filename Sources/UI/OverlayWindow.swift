@@ -6,6 +6,9 @@ final class OverlayWindow {
     private let panel: NSPanel
     private let hosting: NSHostingView<AnyView>
     private let prefs: PreferencesStore
+    /// Bumped by every show/flash so a stale hide animation doesn't order out newer content.
+    private var generation = 0
+    private var flashHide: DispatchWorkItem?
 
     init(prefs: PreferencesStore = .shared, content: AnyView) {
         self.prefs = prefs
@@ -27,8 +30,24 @@ final class OverlayWindow {
     func update(_ content: AnyView) { hosting.rootView = content }
 
     func show(anchor menuBarIconFrame: CGRect?) {
-        reposition(anchor: menuBarIconFrame)
         HUDAmplitudeModel.shared.start()
+        present(anchor: menuBarIconFrame)
+    }
+
+    /// Shows `content` (a message, not the recording pill) for `seconds`, then hides.
+    func flash(_ content: AnyView, anchor menuBarIconFrame: CGRect?, seconds: Double) {
+        update(content)
+        present(anchor: menuBarIconFrame)
+        let hide = DispatchWorkItem { [weak self] in self?.hide() }
+        flashHide = hide
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds, execute: hide)
+    }
+
+    private func present(anchor: CGRect?) {
+        flashHide?.cancel()
+        flashHide = nil
+        generation += 1
+        reposition(anchor: anchor)
         panel.alphaValue = 0
         panel.orderFrontRegardless()
         NSAnimationContext.runAnimationGroup { ctx in
@@ -39,11 +58,15 @@ final class OverlayWindow {
 
     func hide() {
         HUDAmplitudeModel.shared.stop()
+        let hiding = generation
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.15
             panel.animator().alphaValue = 0
         }, completionHandler: { [weak self] in
-            self?.panel.orderOut(nil)
+            MainActor.assumeIsolated {
+                guard let self, self.generation == hiding else { return }
+                self.panel.orderOut(nil)
+            }
         })
     }
 

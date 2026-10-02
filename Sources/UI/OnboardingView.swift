@@ -1,10 +1,98 @@
 import SwiftUI
 
 struct OnboardingView: View {
+    @ObservedObject var modelsVM: ModelsViewModel
+    @ObservedObject private var prefs = PreferencesStore.shared
     @State private var perms = PermissionsManager.shared.current()
+    @State private var step: Step
+    @State private var choice: TranscriptionEngineKind = .whisper
+    /// Called when the user confirms an engine (a Gemini key is already saved by then).
+    var onEngineChosen: (TranscriptionEngineKind) -> Void
     var onDone: () -> Void
 
+    private enum Step { case engine, permissions }
+
+    init(modelsVM: ModelsViewModel,
+         needsEngine: Bool,
+         onEngineChosen: @escaping (TranscriptionEngineKind) -> Void,
+         onDone: @escaping () -> Void) {
+        self.modelsVM = modelsVM
+        self.onEngineChosen = onEngineChosen
+        self.onDone = onDone
+        _step = State(initialValue: needsEngine ? .engine : .permissions)
+    }
+
     var body: some View {
+        Group {
+            switch step {
+            case .engine:      engineStep
+            case .permissions: permissionsStep
+            }
+        }
+        .padding(20)
+        .frame(width: 480, height: 440)
+    }
+
+    // MARK: - Engine
+
+    private var engineStep: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("How should HoldSpeak recognize speech?")
+                .font(.title2).bold()
+            engineCard(.whisper,
+                       title: "Whisper — on this Mac",
+                       detail: "Free and private, works offline. Downloads an ~800 MB model now.")
+            engineCard(.gemini,
+                       title: "Gemini — Google cloud",
+                       detail: "Usually more accurate with mixed languages and jargon. Needs your own Google AI Studio API key with billing.")
+            if choice == .gemini {
+                GeminiKeyEditor(width: 420)
+                    .padding(.leading, 4)
+            }
+            Text("You can switch later in Preferences → Audio.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Spacer(minLength: 0)
+            HStack {
+                Spacer()
+                Button("Continue") {
+                    onEngineChosen(choice)
+                    perms = PermissionsManager.shared.current()
+                    if perms.allGranted { onDone() } else { step = .permissions }
+                }
+                .disabled(choice == .gemini && !prefs.hasGeminiKey)
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+    }
+
+    private func engineCard(_ kind: TranscriptionEngineKind, title: String, detail: String) -> some View {
+        let selected = choice == kind
+        return Button { choice = kind } label: {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: selected ? "largecircle.fill.circle" : "circle")
+                    .foregroundColor(selected ? .accentColor : .secondary)
+                    .font(.system(size: 14))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title).font(.system(size: 13, weight: .semibold))
+                    Text(detail)
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(10)
+            .contentShape(Rectangle())
+            .background(RoundedRectangle(cornerRadius: 8).fill(Color.secondary.opacity(selected ? 0.12 : 0.05)))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(selected ? Color.accentColor : .clear, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Permissions
+
+    private var permissionsStep: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("HoldSpeak needs a few permissions")
                 .font(.title2).bold()
@@ -20,20 +108,30 @@ struct OnboardingView: View {
             row("Input Monitoring", ok: perms.inputMonitoring) {
                 PermissionsManager.shared.openInputMonitoringSettings()
             }
-            row("Documents folder (reuse existing WhisperKit models)",
-                ok: perms.documentsAccess,
-                optional: true) {
-                if PermissionsManager.shared.requestDocumentsAccess() {
-                    refresh()
-                } else {
-                    PermissionsManager.shared.openDocumentsSettings()
+            if prefs.engine == .whisper {
+                row("Documents folder (reuse existing WhisperKit models)",
+                    ok: perms.documentsAccess,
+                    optional: true) {
+                    if PermissionsManager.shared.requestDocumentsAccess() {
+                        refresh()
+                    } else {
+                        PermissionsManager.shared.openDocumentsSettings()
+                    }
+                }
+                Text("The Documents permission is optional — without it, HoldSpeak still works and just downloads models into its own folder on first use.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+            if modelsVM.downloading {
+                HStack(spacing: 10) {
+                    Text("Downloading Whisper model…")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    ProgressView(value: modelsVM.progress)
                 }
             }
-            Text("The Documents permission is optional — without it, HoldSpeak still works and just downloads models into its own folder on first use.")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 0)
             HStack {
                 Button("Re-check") { refresh() }
                 Spacer()
@@ -42,8 +140,6 @@ struct OnboardingView: View {
                     .keyboardShortcut(.defaultAction)
             }
         }
-        .padding(20)
-        .frame(width: 460, height: 380)
     }
 
     private func row(_ title: String, ok: Bool, optional: Bool = false, action: @escaping () -> Void) -> some View {

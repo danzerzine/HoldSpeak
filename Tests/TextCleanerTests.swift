@@ -100,4 +100,13 @@ final class TextCleanerTests: XCTestCase {
         XCTAssertEqual(TextCleaner.clean("thank you for the review"), "Thank you for the review.")
         XCTAssertEqual(TextCleaner.clean("скажи ему спасибо"), "Скажи ему спасибо.")
     }
+
+    func test_hallucinationFilterCanBeDisabled() {
+        XCTAssertEqual(TextCleaner.clean("Спасибо."), "")
+        XCTAssertEqual(TextCleaner.clean("Спасибо.", dropHallucinations: false), "Спасибо.")
+    }
+    func test_geminiPunctuationNotDoubled() {
+        XCTAssertEqual(TextCleaner.clean("Готово.", dropHallucinations: false), "Готово.")
+        XCTAssertEqual(TextCleaner.clean("Готово.", autoPunctuation: false, dropHallucinations: false), "Готово")
+    }
 }

@@ -22,6 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Last values acted on, so unrelated defaults writes don't re-trigger them.
     private var appliedPrimaryLanguage: PrimaryLanguage?
     private var appliedModelID: WhisperModelID?
+    private var appliedEngine: TranscriptionEngineKind?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -43,8 +44,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         coordinator = TranscriptionCoordinator(engine: engine, store: store)
         modelsVM = ModelsViewModel()
         modelsVM.onDownloaded = { [weak self] id in
-            guard id == PreferencesStore.shared.modelID else { return }
+            let prefs = PreferencesStore.shared
+            guard prefs.engine == .whisper, id == prefs.modelID else { return }
             self?.loadModel(id)
+        }
+        modelsVM.onDeleted = { [weak self] in
+            guard let self else { return }
+            self.engine.unloadWhisper()
+            // The selected model may still be found in another app's folder.
+            let prefs = PreferencesStore.shared
+            if prefs.engine == .whisper, ModelManager.shared.locateModel(prefs.modelID) != nil {
+                self.loadModel(prefs.modelID)
+            }
         }
         popoverVM = PopoverViewModel(store: store, metricsEngine: metrics)
         menu = MenuBarController(viewModel: popoverVM)
@@ -59,8 +70,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Task { @MainActor in self?.handleDefaultsChange() }
         }
 
-        appliedModelID = PreferencesStore.shared.modelID
-        loadModel(PreferencesStore.shared.modelID)
+        // Installs from before the engine choice existed downloaded a Whisper model
+        // on first launch: keep them on Whisper instead of asking again.
+        let prefs = PreferencesStore.shared
+        if !prefs.engineChosen, ModelManager.shared.hasManagedModels() {
+            prefs.engine = .whisper
+        }
+        appliedModelID = prefs.modelID
+        appliedEngine = prefs.engineChosen ? prefs.engine : nil
+        // A fresh install loads nothing until onboarding picks an engine; Gemini
+        // never needs the ~800 MB Whisper model in memory.
+        if prefs.engineChosen, prefs.engine == .whisper {
+            loadModel(prefs.modelID)
+        }
 
         NotificationCenter.default.addObserver(forName: .openPreferences, object: nil, queue: .main) { [weak self] note in
             let tab = (note.object as? String).flatMap(PrefsTab.init(rawValue:)) ?? .general
@@ -75,15 +97,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func handlePermissionsAndStart() {
         hotkey.start()
         let perms = PermissionsManager.shared.current()
-        if !perms.allGranted { showOnboarding() }
+        if !perms.allGranted || !PreferencesStore.shared.engineChosen { showOnboarding() }
     }
 
     private func showOnboarding() {
-        let content = OnboardingView { [weak self] in
-            self?.onboardingWin?.close()
-            self?.onboardingWin = nil
-            self?.hotkey.start()
-        }
+        let content = OnboardingView(
+            modelsVM: modelsVM,
+            needsEngine: !PreferencesStore.shared.engineChosen,
+            onEngineChosen: { [weak self] kind in self?.chooseEngine(kind) },
+            onDone: { [weak self] in
+                self?.onboardingWin?.close()
+                self?.onboardingWin = nil
+                self?.hotkey.start()
+            }
+        )
         let hc = NSHostingController(rootView: content)
         let win = NSWindow(contentViewController: hc)
         win.title = "Welcome"
@@ -92,6 +119,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         win.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         onboardingWin = win
+    }
+
+    private func chooseEngine(_ kind: TranscriptionEngineKind) {
+        let prefs = PreferencesStore.shared
+        prefs.engine = kind
+        appliedEngine = kind
+        appliedModelID = prefs.modelID
+        pttLog("Engine chosen in onboarding: \(kind.rawValue)")
+        guard kind == .whisper else { return }
+        if ModelManager.shared.locateModel(prefs.modelID) != nil {
+            loadModel(prefs.modelID)
+        } else {
+            // Shows progress in onboarding; onDownloaded loads it.
+            Task { await modelsVM.download(prefs.modelID) }
+        }
     }
 
     private func showPreferences(initialTab: PrefsTab = .general) {
@@ -133,7 +175,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if prefs.primaryLanguage != appliedPrimaryLanguage {
             applyPrimaryLanguageToTerminology()
         }
-        if prefs.modelID != appliedModelID {
+        guard prefs.engineChosen else { return }
+        let engineChanged = prefs.engine != appliedEngine
+        if engineChanged {
+            appliedEngine = prefs.engine
+            pttLog("Engine switched to \(prefs.engine.rawValue)")
+            if prefs.engine == .gemini { engine.unloadWhisper() }
+        }
+        guard prefs.engine == .whisper else { return }
+        if engineChanged || prefs.modelID != appliedModelID {
             appliedModelID = prefs.modelID
             // A model that isn't on disk yet loads once "Download selected model" finishes.
             if ModelManager.shared.locateModel(prefs.modelID) != nil {
@@ -228,6 +278,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     self.notify("No focused input", "Transcript saved to history.")
                 case .inserted:
                     break
+                case .failed(let failure):
+                    self.overlay.flash(AnyView(HUDMessageView(title: failure.title, detail: failure.body)),
+                                       anchor: self.menu.statusItemFrame,
+                                       seconds: failure.displaySeconds)
+                    return
                 }
                 self.popoverVM.refresh()
             }
