@@ -30,5 +30,26 @@
 	<string></string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>HoldSpeak records your speech while you hold the hotkey and turns it into text.</string>
+	<key>NSServices</key>
+	<array>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>Fix Spelling in HoldSpeak</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>fixSpelling</string>
+			<key>NSPortName</key>
+			<string>HoldSpeak</string>
+			<key>NSRequiredContext</key>
+			<dict/>
+			<key>NSSendTypes</key>
+			<array>
+				<string>NSStringPboardType</string>
+				<string>public.utf8-plain-text</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

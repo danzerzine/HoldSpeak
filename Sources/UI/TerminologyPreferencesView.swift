@@ -2,9 +2,30 @@ import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
 
+/// The wrong spelling waiting to be fixed: filled by the "Fix in HoldSpeak"
+/// service so the Terms tab opens with it already typed in.
+@MainActor
+final class CorrectionDraft: ObservableObject {
+    static let shared = CorrectionDraft()
+    @Published var wrong = ""
+    /// Bumped on every request so the tab refocuses even for the same word.
+    @Published var request = 0
+
+    func start(with wrong: String) {
+        self.wrong = wrong.trimmingCharacters(in: .whitespacesAndNewlines)
+        request += 1
+    }
+}
+
 struct TerminologyPreferencesView: View {
     @ObservedObject var store: TerminologyStore = .shared
+    @ObservedObject var draft: CorrectionDraft = .shared
     @Environment(\.colorScheme) private var scheme
+
+    private enum CorrectionField { case wrong, right }
+    @State private var right: String = ""
+    @State private var feedback: String?
+    @FocusState private var correctionFocus: CorrectionField?
 
     @State private var editing: TerminologyEntry?
     @State private var searchText: String = ""
@@ -33,7 +54,7 @@ struct TerminologyPreferencesView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             header
-            footer
+            correctionRow
             searchField
             ScrollViewReader { proxy in
                 ScrollView {
@@ -59,7 +80,10 @@ struct TerminologyPreferencesView: View {
                     }
                 }
             }
+            footer
         }
+        .onAppear(perform: focusDraft)
+        .onChange(of: draft.request) { _ in focusDraft() }
         .background(
             Button("") { searchFocused = true }
                 .keyboardShortcut("f", modifiers: .command)
@@ -88,13 +112,81 @@ struct TerminologyPreferencesView: View {
                 Text("Terminology")
                     .font(.system(size: 13))
                     .foregroundColor(PTT.textBody(scheme))
-                Text("After transcription, each listed variant is replaced with its canonical form.")
+                Text("When a word comes out wrong, type what you got and what it should be.")
                     .font(.system(size: 11))
                     .foregroundColor(PTT.textSoft(scheme))
             }
             Spacer(minLength: 0)
             languagePicker
         }
+    }
+
+    private var correctionRow: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                correctionField("Transcribed as", placeholder: "бойскап",
+                                text: $draft.wrong, field: .wrong) {
+                    correctionFocus = .right
+                }
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 12))
+                    .foregroundColor(PTT.textMuted(scheme))
+                    .padding(.top, 16)
+                correctionField("Should be", placeholder: "Basecamp",
+                                text: $right, field: .right, onSubmit: saveCorrection)
+            }
+            Text(feedback ?? "Press Return to save.")
+                .font(.system(size: 11))
+                .foregroundColor(PTT.textSoft(scheme))
+        }
+        // Typing starts a new correction; clearing the fields after a save keeps the message.
+        .onChange(of: draft.wrong) { if !$0.isEmpty { feedback = nil } }
+        .onChange(of: right) { if !$0.isEmpty { feedback = nil } }
+    }
+
+    private func correctionField(_ label: String, placeholder: String, text: Binding<String>,
+                                 field: CorrectionField, onSubmit: @escaping () -> Void) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.system(size: 11))
+                .foregroundColor(PTT.textMuted(scheme))
+            TextField(placeholder, text: text)
+                .textFieldStyle(.plain)
+                .font(.system(size: 13))
+                .foregroundColor(PTT.textBody(scheme))
+                .focused($correctionFocus, equals: field)
+                .onSubmit(onSubmit)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .pttSurface(glass: Capsule(), fallback: RoundedRectangle(cornerRadius: 8),
+                            fill: PTT.fieldBG(scheme), border: PTT.fieldBorder(scheme))
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func focusDraft() {
+        guard !draft.wrong.isEmpty else { return }
+        right = ""
+        searchText = ""
+        DispatchQueue.main.async { correctionFocus = .right }
+    }
+
+    private func saveCorrection() {
+        let wrong = draft.wrong.trimmingCharacters(in: .whitespacesAndNewlines)
+        switch store.addCorrection(wrong: draft.wrong, right: right) {
+        case .addedVariant(let canonical):
+            feedback = "Saved: “\(wrong)” now becomes “\(canonical)”."
+        case .newTerm:
+            feedback = "Saved: “\(wrong)” now becomes “\(right.trimmingCharacters(in: .whitespaces))”."
+        case .alreadyThere:
+            feedback = "Already in the list."
+        case .invalid:
+            correctionFocus = draft.wrong.trimmingCharacters(in: .whitespaces).isEmpty ? .wrong : .right
+            return
+        }
+        draft.wrong = ""
+        right = ""
+        correctionFocus = .wrong
     }
 
     private var languagePicker: some View {
@@ -168,15 +260,22 @@ struct TerminologyPreferencesView: View {
 
     private func row(_ entry: TerminologyEntry) -> some View {
         HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 8) {
+                if !entry.variants.isEmpty {
+                    Text(entry.variants.joined(separator: ", "))
+                        .font(.system(size: 13))
+                        .foregroundColor(PTT.textSoft(scheme))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 11))
+                        .foregroundColor(PTT.textMuted(scheme))
+                }
                 Text(entry.canonical)
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(PTT.textBody(scheme))
-                Text(entry.variants.joined(separator: ", "))
-                    .font(.system(size: 11))
-                    .foregroundColor(PTT.textSoft(scheme))
                     .lineLimit(1)
-                    .truncationMode(.tail)
+                    .layoutPriority(1)
             }
             Spacer(minLength: 0)
             Button { editing = entry } label: {
@@ -198,10 +297,6 @@ struct TerminologyPreferencesView: View {
 
     private var footer: some View {
         HStack(spacing: 8) {
-            Button { editing = TerminologyEntry(canonical: "", variants: []) } label: {
-                pillText("Add term")
-            }.pttButton()
-
             Button { confirmLoadDefaults() } label: {
                 pillText("Load defaults…")
             }.pttButton()
@@ -282,12 +377,12 @@ private struct EditorSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(entry.canonical.isEmpty ? "New term" : "Edit term")
+            Text("Edit term")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(PTT.textPrimary(scheme))
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("Canonical form")
+                Text("Should be")
                     .font(.system(size: 11))
                     .foregroundColor(PTT.textMuted(scheme))
                 TextField("pull request", text: $entry.canonical)
@@ -295,7 +390,7 @@ private struct EditorSheet: View {
             }
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("Variants (one per line)")
+                Text("Transcribed as (one per line)")
                     .font(.system(size: 11))
                     .foregroundColor(PTT.textMuted(scheme))
                 TextEditor(text: $variantsText)

@@ -111,6 +111,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             loadModel(prefs.modelID)
         }
 
+        NSApp.servicesProvider = self
+        NSUpdateDynamicServices()
+
         NotificationCenter.default.addObserver(forName: .openPreferences, object: nil, queue: .main) { [weak self] note in
             let tab = (note.object as? String).flatMap(PrefsTab.init(rawValue:)) ?? .general
             Task { @MainActor in self?.showPreferences(initialTab: tab) }
@@ -163,6 +166,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// "Fix Spelling in HoldSpeak" service (NSServices in Info.plist): the selected
+    /// text becomes the wrong spelling on the Terms tab, ready for the right one.
+    @objc func fixSpelling(_ pboard: NSPasteboard, userData: String?,
+                           error: AutoreleasingUnsafeMutablePointer<NSString?>) {
+        guard let text = pboard.string(forType: .string),
+              !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        CorrectionDraft.shared.start(with: text)
+        showPreferences(initialTab: .terminology)
+    }
+
     private func showPreferences(initialTab: PrefsTab = .general) {
         if prefsWin == nil { prefsWin = PreferencesWindowController() }
         let view = PreferencesView(
@@ -178,7 +191,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             },
             initialTab: initialTab
         )
-        prefsWin?.present(view)
+        prefsWin?.present(view.id(UUID()))
     }
 
     @ViewBuilder private func hudView() -> some View {

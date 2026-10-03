@@ -155,6 +155,43 @@ public final class TerminologyStore: ObservableObject {
         persistActive()
     }
 
+    public enum CorrectionResult: Equatable {
+        case addedVariant(canonical: String)
+        case newTerm
+        case alreadyThere
+        case invalid
+    }
+
+    /// "Transcribed as `wrong`, should be `right`". Joins the entry whose
+    /// canonical matches `right` (ignoring case) or starts a new one, and drops
+    /// `wrong` from any other entry so one spelling maps to one term.
+    @discardableResult
+    public func addCorrection(wrong: String, right: String) -> CorrectionResult {
+        let wrong = wrong.trimmingCharacters(in: .whitespacesAndNewlines)
+        let right = right.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !wrong.isEmpty, !right.isEmpty, wrong != right else { return .invalid }
+        let same: (String, String) -> Bool = { $0.caseInsensitiveCompare($1) == .orderedSame }
+
+        let target = entries.firstIndex { $0.canonical == right }
+            ?? entries.firstIndex { same($0.canonical, right) }
+        if let t = target, entries[t].variants.contains(where: { same($0, wrong) }) {
+            return .alreadyThere
+        }
+        for i in entries.indices where i != target {
+            entries[i].variants.removeAll { same($0, wrong) }
+        }
+        let result: CorrectionResult
+        if let t = target {
+            entries[t].variants.append(wrong)
+            result = .addedVariant(canonical: entries[t].canonical)
+        } else {
+            entries.insert(TerminologyEntry(canonical: right, variants: [wrong]), at: 0)
+            result = .newTerm
+        }
+        persistActive()
+        return result
+    }
+
     public func remove(id: UUID) {
         entries.removeAll { $0.id == id }
         persistActive()

@@ -75,6 +75,14 @@ targets:
         CFBundleVersion: "1"
         NSMicrophoneUsageDescription: HoldSpeak records your speech while you hold the hotkey and turns it into text.
         NSHumanReadableCopyright: ""
+        # Right-click a misheard word anywhere: opens Terms with it typed in.
+        NSServices:
+          - NSMenuItem:
+              default: Fix Spelling in HoldSpeak
+            NSMessage: fixSpelling
+            NSPortName: HoldSpeak
+            NSSendTypes: [NSStringPboardType, public.utf8-plain-text]
+            NSRequiredContext: {}
     entitlements:
       path: Resources/HoldSpeak.entitlements
       properties:

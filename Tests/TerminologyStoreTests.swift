@@ -111,4 +111,29 @@ final class TerminologyStoreTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: legacy.path),
                        "legacy file should be moved away")
     }
+
+    @MainActor
+    func test_addCorrection_joinsExistingTermIgnoringCase() {
+        let dir = tempDir()
+        let store = newStore(directory: dir)
+        store.add(TerminologyEntry(canonical: "Basecamp", variants: ["бейскэмп"]))
+        XCTAssertEqual(store.addCorrection(wrong: " бойскап ", right: "basecamp"),
+                       .addedVariant(canonical: "Basecamp"))
+        XCTAssertEqual(store.entries.count, 1)
+        XCTAssertEqual(store.entries[0].variants, ["бейскэмп", "бойскап"])
+        XCTAssertEqual(store.addCorrection(wrong: "Бойскап", right: "Basecamp"), .alreadyThere)
+        XCTAssertEqual(newStore(directory: dir).entries[0].variants, ["бейскэмп", "бойскап"])
+    }
+
+    @MainActor
+    func test_addCorrection_newTermAndMovesSpellingFromOtherTerm() {
+        let store = newStore()
+        store.add(TerminologyEntry(canonical: "Jira", variants: ["джира"]))
+        XCTAssertEqual(store.addCorrection(wrong: "джира", right: "Gira"), .newTerm)
+        XCTAssertEqual(store.entries.first?.canonical, "Gira")
+        XCTAssertEqual(store.entries.first?.variants, ["джира"])
+        XCTAssertEqual(store.entries.first { $0.canonical == "Jira" }?.variants, [])
+        XCTAssertEqual(store.addCorrection(wrong: "", right: "x"), .invalid)
+        XCTAssertEqual(store.addCorrection(wrong: "x", right: "x"), .invalid)
+    }
 }
