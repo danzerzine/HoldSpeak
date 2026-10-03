@@ -358,7 +358,7 @@ struct PreferencesView: View {
             labeledRow("Model", alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
                     StyledDropdown(selection: $prefs.modelChoice, width: 280, current: prefs.modelChoice.label) {
-                        Section("Whisper — on this Mac, free") {
+                        Section("On this Mac, free") {
                             ForEach(WhisperModelID.allCases) { Text($0.label).tag(ModelChoice.whisper($0)) }
                         }
                         Section("Gemini — Google cloud, your API key") {

@@ -23,7 +23,7 @@ A free, local alternative to paid Whisper wrappers. Built for one reason: talkin
 - **Menu bar popover** with recent transcriptions (click to copy) and metrics: dictations today / yesterday, 7-day avg WPM
 - **HUD overlay** while you hold the key: dark pill with a live mic level; if a dictation fails (no model, bad API key, quota), the reason shows in the same pill
 - **Light text cleanup** — trims long "eeeeee / mmmmm / ummm", collapses 3+ consecutive repeats, capitalizes the first letter and adds a period
-- **Liquid Glass** on macOS 26 and later — the HUD, popover, Preferences and onboarding use the system glass; macOS 13–15 keep the classic look
+- **Liquid Glass** on macOS 26 and later — the HUD, popover, Preferences and onboarding use the system glass; macOS 14–15 keep the classic look
 - **Terminology dictionary** — canonical IT terms (pull request, Kubernetes, Claude Code, …) replace misrecognized Russian transliterations in transcripts; ships with ~110 defaults and is fully editable
 
 ## Install
@@ -96,6 +96,7 @@ The delay between releasing the hotkey and text appearing in the input is domina
   - **Small (~470 MB)** — middle ground.
   - **Turbo full (~1.5 GB)** — default; best quality but ~400–800 ms per utterance.
   - **Turbo compressed (~630 MB)** — the same Turbo with quantized weights: a third of the disk and memory, about the same speed. The first load on a Mac compiles it for the Neural Engine and takes several minutes; later loads are fast.
+  - **Parakeet Ultra (~610 MB)** — NVIDIA Parakeet (a post-trained v3), run with FluidAudio instead of WhisperKit. About 20× faster than Whisper on the same Mac, 25 languages including Russian and Ukrainian. It detects the language itself, so the Primary language setting does not apply to it. Needs macOS 14.
 - **Set a fixed language** instead of Auto. Preferences → Audio → *Primary language*: picking Russian or English skips an extra language-detection forward pass that Auto mode runs before transcription.
 
 Combining **Tiny + explicit language** gives the lowest end-to-end latency. Combining **Turbo + Auto** gives the best quality but is the slowest path.

@@ -1,5 +1,6 @@
 import Foundation
 import WhisperKit
+import FluidAudio
 
 public final class ModelManager {
     public static let shared = ModelManager()
@@ -30,6 +31,7 @@ public final class ModelManager {
     }
 
     public func locateModel(_ id: WhisperModelID) -> URL? {
+        if id.isParakeet { return locateParakeet() }
         let fm = FileManager.default
         let managed = managedDirectory().appendingPathComponent(id.rawValue)
         if fm.fileExists(atPath: managed.path) { return managed }
@@ -38,6 +40,17 @@ public final class ModelManager {
         let external = externalWhisperKitDirectory().appendingPathComponent(id.rawValue)
         if fm.fileExists(atPath: external.path), fm.isReadableFile(atPath: external.path) {
             return external
+        }
+        return nil
+    }
+
+    /// Parakeet: HoldSpeak's own folder, then FluidAudio's default cache (other
+    /// FluidAudio apps). A folder only counts once every model file is in it.
+    private func locateParakeet() -> URL? {
+        let managed = managedDirectory().appendingPathComponent(WhisperModelID.parakeetUltra.rawValue)
+        for dir in [managed, AsrModels.defaultCacheDirectory(for: .ultra)]
+        where AsrModels.modelsExist(at: dir, version: .ultra) {
+            return dir
         }
         return nil
     }
@@ -78,6 +91,13 @@ public final class ModelManager {
     public func download(_ id: WhisperModelID,
                          progress: @escaping (Double) -> Void) async throws -> URL {
         try FileManager.default.createDirectory(at: managedDirectory(), withIntermediateDirectories: true)
+        if id.isParakeet {
+            return try await AsrModels.download(
+                to: managedDirectory().appendingPathComponent(id.rawValue),
+                version: .ultra,
+                progressHandler: { p in progress(p.fractionCompleted) }
+            )
+        }
         try FileManager.default.createDirectory(at: downloadCacheDirectory(), withIntermediateDirectories: true)
         let downloaded = try await WhisperKit.download(
             variant: id.rawValue,

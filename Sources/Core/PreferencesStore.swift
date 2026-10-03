@@ -65,13 +65,17 @@ public enum WhisperModelID: String, CaseIterable, Identifiable {
     case small = "openai_whisper-small"
     case turbo = "openai_whisper-large-v3-v20240930"
     case turboCompressed = "openai_whisper-large-v3-v20240930_turbo_632MB"
+    /// NVIDIA Parakeet, run by FluidAudio rather than WhisperKit; raw value is its folder name.
+    case parakeetUltra = "parakeet-ultra"
     public var id: String { rawValue }
+    public var isParakeet: Bool { self == .parakeetUltra }
     public var label: String {
         switch self {
         case .tiny:  return "Tiny (~75 MB)"
         case .small: return "Small (~470 MB)"
         case .turbo: return "Turbo full — large-v3 turbo (~1.5 GB, recommended)"
         case .turboCompressed: return "Turbo compressed — same model, quantized (~630 MB, slower first load)"
+        case .parakeetUltra: return "Parakeet Ultra — NVIDIA, 25 languages, ~20× faster (~610 MB)"
         }
     }
     /// For the closed dropdown, where the full label gets truncated.
@@ -81,6 +85,7 @@ public enum WhisperModelID: String, CaseIterable, Identifiable {
         case .small: return "Small (~470 MB)"
         case .turbo: return "Turbo full (~1.5 GB)"
         case .turboCompressed: return "Turbo compressed (~630 MB)"
+        case .parakeetUltra: return "Parakeet Ultra (~610 MB)"
         }
     }
 }
@@ -103,7 +108,7 @@ public enum ModelChoice: Hashable, Identifiable {
     /// Shown in the closed dropdown; the open menu lists the full model labels.
     public var label: String {
         switch self {
-        case .whisper(let m): return "Whisper \(m.shortLabel)"
+        case .whisper(let m): return m.isParakeet ? m.shortLabel : "Whisper \(m.shortLabel)"
         case .gemini(let m):  return "Gemini \(m.shortLabel)"
         }
     }

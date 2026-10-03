@@ -1,10 +1,13 @@
 import Foundation
 import WhisperKit
+import FluidAudio
 
-/// Local WhisperKit recognition. Audio arrives already trimmed by the facade.
+/// Local recognition: WhisperKit, or FluidAudio for Parakeet models. Audio arrives
+/// already trimmed by the facade.
 @MainActor
 final class WhisperTranscriber {
     private var kit: WhisperKit?
+    private var parakeet: AsrManager?
     private var currentModelID: WhisperModelID?
     /// Most recent model asked for; a queued load that has been superseded is skipped.
     private var requestedModelID: WhisperModelID?
@@ -38,7 +41,7 @@ final class WhisperTranscriber {
         let task = Task { @MainActor [weak self] in
             _ = await previous?.result
             guard let self, self.requestedModelID == model else { return }
-            if self.currentModelID == model, self.kit != nil { return }
+            if self.currentModelID == model, self.kit != nil || self.parakeet != nil { return }
             try await self.load(model: model)
         }
         loadTask = task
@@ -52,6 +55,16 @@ final class WhisperTranscriber {
         } else {
             url = try await ModelManager.shared.download(model) { _ in }
         }
+        if model.isParakeet {
+            let models = try await AsrModels.load(from: url, version: .ultra)
+            let manager = AsrManager(config: .default)
+            try await manager.loadModels(models)
+            guard requestedModelID == model else { return }
+            kit = nil
+            parakeet = manager
+            currentModelID = model
+            return
+        }
         let config = WhisperKitConfig(modelFolder: url.path,
                                       verbose: false,
                                       logLevel: .error,
@@ -59,6 +72,7 @@ final class WhisperTranscriber {
         let loaded = try await WhisperKit(config)
         // Unloaded or switched to another model while this one was building.
         guard requestedModelID == model else { return }
+        parakeet = nil
         kit = loaded
         currentModelID = model
     }
@@ -67,10 +81,12 @@ final class WhisperTranscriber {
     func unload() {
         requestedModelID = nil
         kit = nil
+        parakeet = nil
         currentModelID = nil
     }
 
     func transcribe(_ trimmed: [Float], durationMs: Int) async -> TranscriptionResult {
+        if let parakeet { return await transcribeParakeet(parakeet, trimmed, durationMs: durationMs) }
         guard let kit else { pttLog("finalize: kit is nil"); return .failed(.whisperModelNotReady) }
         let isAuto = PreferencesStore.shared.primaryLanguage == .auto
         let preferred = Self.userPreferredLanguages()
@@ -85,6 +101,22 @@ final class WhisperTranscriber {
             return .text(text, language: lang, durationMs: durationMs)
         } catch {
             pttLog("finalize error: \(error)")
+            return .empty
+        }
+    }
+
+    /// Parakeet picks the language itself. No script hint: forcing Cyrillic for
+    /// Russian would also turn English terms like "README" into Cyrillic.
+    private func transcribeParakeet(_ manager: AsrManager, _ samples: [Float], durationMs: Int) async -> TranscriptionResult {
+        do {
+            var state = TdtDecoderState.make()
+            let result = try await manager.transcribe(padShortSegment(samples), decoderState: &state)
+            let text = result.text.trimmingCharacters(in: .whitespaces)
+            pttLog("finalize: parakeet text=\(logText(text)) dur=\(durationMs)ms")
+            if text.isEmpty { return .empty }
+            return .text(text, language: nil, durationMs: durationMs)
+        } catch {
+            pttLog("finalize parakeet error: \(error)")
             return .empty
         }
     }
