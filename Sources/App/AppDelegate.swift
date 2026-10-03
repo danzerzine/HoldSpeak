@@ -270,7 +270,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let samples = self.engine.takeSamples()
             Task { @MainActor in
                 let outcome = await self.coordinator.finishRecording(samples: samples)
-                self.finishHUD(generation: generation, success: outcome == .inserted)
+                if case .inserted = outcome {
+                    self.finishHUD(generation: generation, success: true)
+                } else {
+                    self.finishHUD(generation: generation, success: false)
+                }
                 switch outcome {
                 case .empty:
                     return
