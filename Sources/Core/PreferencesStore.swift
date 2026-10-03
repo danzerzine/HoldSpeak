@@ -64,12 +64,14 @@ public enum WhisperModelID: String, CaseIterable, Identifiable {
     case tiny = "openai_whisper-tiny"
     case small = "openai_whisper-small"
     case turbo = "openai_whisper-large-v3-v20240930"
+    case turboCompressed = "openai_whisper-large-v3-v20240930_turbo_632MB"
     public var id: String { rawValue }
     public var label: String {
         switch self {
         case .tiny:  return "Tiny (~75 MB)"
         case .small: return "Small (~470 MB)"
-        case .turbo: return "Turbo — large-v3 turbo (~1.5 GB, recommended)"
+        case .turbo: return "Turbo full — large-v3 turbo (~1.5 GB, recommended)"
+        case .turboCompressed: return "Turbo compressed — same model, quantized (~630 MB, slower first load)"
         }
     }
     /// For the closed dropdown, where the full label gets truncated.
@@ -77,7 +79,8 @@ public enum WhisperModelID: String, CaseIterable, Identifiable {
         switch self {
         case .tiny:  return "Tiny (~75 MB)"
         case .small: return "Small (~470 MB)"
-        case .turbo: return "Turbo (~1.5 GB)"
+        case .turbo: return "Turbo full (~1.5 GB)"
+        case .turboCompressed: return "Turbo compressed (~630 MB)"
         }
     }
 }

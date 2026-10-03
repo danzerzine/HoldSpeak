@@ -94,7 +94,8 @@ The delay between releasing the hotkey and text appearing in the input is domina
 - **Pick a smaller model.** Preferences → Audio → *Model*:
   - **Tiny (~75 MB)** — fastest (~80–150 ms on Apple Silicon for a short utterance), lowest quality. Good for quick English/single-language dictation.
   - **Small (~470 MB)** — middle ground.
-  - **Turbo (~1.5 GB)** — default; best quality but ~400–800 ms per utterance.
+  - **Turbo full (~1.5 GB)** — default; best quality but ~400–800 ms per utterance.
+  - **Turbo compressed (~630 MB)** — the same Turbo with quantized weights: a third of the disk and memory, about the same speed. The first load on a Mac compiles it for the Neural Engine and takes several minutes; later loads are fast.
 - **Set a fixed language** instead of Auto. Preferences → Audio → *Primary language*: picking Russian or English skips an extra language-detection forward pass that Auto mode runs before transcription.
 
 Combining **Tiny + explicit language** gives the lowest end-to-end latency. Combining **Turbo + Auto** gives the best quality but is the slowest path.
