@@ -22,12 +22,19 @@ final class OverlayWindow {
         panel.hasShadow = false
         panel.ignoresMouseEvents = true
         panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
-        hosting = NSHostingView(rootView: content)
+        hosting = NSHostingView(rootView: Self.centred(content))
+        // Size the panel only in present(): if the hosting view resized it as the pill
+        // shrinks from Listening to Transcribing, the pill would slide off-centre.
+        hosting.sizingOptions = []
         hosting.frame = panel.contentRect(forFrameRect: panel.frame)
         panel.contentView = hosting
     }
 
-    func update(_ content: AnyView) { hosting.rootView = content }
+    func update(_ content: AnyView) { hosting.rootView = Self.centred(content) }
+
+    private static func centred(_ content: AnyView) -> AnyView {
+        AnyView(content.frame(maxWidth: .infinity, maxHeight: .infinity))
+    }
 
     func show(anchor menuBarIconFrame: CGRect?) {
         HUDAmplitudeModel.shared.start()
@@ -47,8 +54,8 @@ final class OverlayWindow {
         flashHide?.cancel()
         flashHide = nil
         generation += 1
-        // The hosting view resizes the panel to its content, which differs between
-        // the recording pill and a message; size it now so it is centred correctly.
+        // The recording pill and a message differ in size; fit the panel to whichever
+        // is shown now, and keep it fixed while it is on screen.
         panel.setContentSize(hosting.fittingSize)
         reposition(anchor: anchor)
         panel.alphaValue = 0

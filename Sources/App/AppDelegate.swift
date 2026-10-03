@@ -23,6 +23,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var appliedPrimaryLanguage: PrimaryLanguage?
     private var appliedModelID: WhisperModelID?
     private var appliedEngine: TranscriptionEngineKind?
+    /// Bumped per recording, so a slow transcription can't close a newer HUD.
+    private var hudGeneration = 0
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -243,6 +245,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func startRecording() {
         pttLog("startRecording")
+        hudGeneration += 1
         recorder.start(input: PreferencesStore.shared.inputSelection)
         overlay.update(AnyView(hudView()))
         overlay.show(anchor: menu.statusItemFrame)
@@ -258,14 +261,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func endRecording() {
         pttLog("endRecording")
-        overlay.hide()
+        let generation = hudGeneration
+        HUDAmplitudeModel.shared.setPhase(.processing)
         recorder.stop { [weak self] in
             guard let self else { return }
             // Take the samples now, synchronously: the next recording's chunks can
             // arrive on main as soon as this completion returns.
             let samples = self.engine.takeSamples()
             Task { @MainActor in
-                switch await self.coordinator.finishRecording(samples: samples) {
+                let outcome = await self.coordinator.finishRecording(samples: samples)
+                self.finishHUD(generation: generation, success: outcome == .inserted)
+                switch outcome {
                 case .empty:
                     return
                 case .skippedSecureField:
@@ -282,6 +288,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 self.popoverVM.refresh()
             }
+        }
+    }
+
+    /// Shows a brief checkmark after a successful insert, then hides the HUD —
+    /// unless another recording has started in the meantime.
+    private func finishHUD(generation: Int, success: Bool) {
+        guard generation == hudGeneration else { return }
+        guard success else { overlay.hide(); return }
+        HUDAmplitudeModel.shared.setPhase(.done)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+            guard let self, generation == self.hudGeneration else { return }
+            self.overlay.hide()
         }
     }
 
