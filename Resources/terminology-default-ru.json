@@ -1,5 +1,5 @@
 [
-  { "id": "1A000001-0000-0000-0000-000000000001", "canonical": "pull request", "variants": ["пулл реквест", "пул-реквест", "пулреквест", "пул реквест", "pull реквест"], "caseSensitive": false },
+  { "id": "1A000001-0000-0000-0000-000000000001", "canonical": "pull request", "variants": ["пулл реквест", "пул-реквест", "пулреквест", "пул реквест", "pull реквест", "пул реквист", "пул реквиста", "пул реквесты"], "caseSensitive": false },
   { "id": "1A000001-0000-0000-0000-000000000002", "canonical": "merge", "variants": ["мёрдж", "мердж", "мерж"], "caseSensitive": false },
   { "id": "1A000001-0000-0000-0000-000000000003", "canonical": "rebase", "variants": ["ребейз", "ребэйз", "ребазить"], "caseSensitive": false },
   { "id": "1A000001-0000-0000-0000-000000000004", "canonical": "commit", "variants": ["коммит", "комит"], "caseSensitive": false },
@@ -99,13 +99,13 @@
   { "id": "21000008-0000-0000-0000-000000000004", "canonical": "deployment", "variants": ["деплоймент"], "caseSensitive": false },
   { "id": "21000008-0000-0000-0000-000000000005", "canonical": "ingress", "variants": ["ингресс", "ингрес"], "caseSensitive": false },
   { "id": "21000008-0000-0000-0000-000000000006", "canonical": "Helm chart", "variants": ["хелм чарт", "хелмчарт"], "caseSensitive": false },
-  { "id": "21000008-0000-0000-0000-000000000007", "canonical": "deploy", "variants": ["деплой", "задеплоить", "задеплоил"], "caseSensitive": false },
+  { "id": "21000008-0000-0000-0000-000000000007", "canonical": "deploy", "variants": ["деплой", "задеплоить", "задеплоил", "диплой", "задиплоить", "задиплоил"], "caseSensitive": false },
   { "id": "21000008-0000-0000-0000-000000000008", "canonical": "rollback", "variants": ["роллбэк", "ролбек", "ролл бек"], "caseSensitive": false },
   { "id": "21000008-0000-0000-0000-000000000009", "canonical": "runner", "variants": ["раннер"], "caseSensitive": false },
   { "id": "21000008-0000-0000-0000-00000000000A", "canonical": "monitoring", "variants": ["мониторинг"], "caseSensitive": false },
-  { "id": "21000008-0000-0000-0000-00000000000B", "canonical": "dashboard", "variants": ["дашборд"], "caseSensitive": false },
+  { "id": "21000008-0000-0000-0000-00000000000B", "canonical": "dashboard", "variants": ["дашборд", "дашборде", "дашборды"], "caseSensitive": false },
   { "id": "21000008-0000-0000-0000-00000000000C", "canonical": "alert", "variants": ["алерт"], "caseSensitive": false },
-  { "id": "21000008-0000-0000-0000-00000000000D", "canonical": "Grafana", "variants": ["графана"], "caseSensitive": false },
+  { "id": "21000008-0000-0000-0000-00000000000D", "canonical": "Grafana", "variants": ["графана", "графане", "графону", "графоне", "графану"], "caseSensitive": false },
   { "id": "21000008-0000-0000-0000-00000000000E", "canonical": "Prometheus", "variants": ["прометеус", "прометей"], "caseSensitive": false },
   { "id": "21000008-0000-0000-0000-00000000000F", "canonical": "Terraform", "variants": ["терраформ"], "caseSensitive": false },
 
@@ -146,5 +146,14 @@
   { "id": "2400000B-0000-0000-0000-00000000000A", "canonical": "backlog", "variants": ["бэклог", "беклог"], "caseSensitive": false },
   { "id": "2400000B-0000-0000-0000-00000000000B", "canonical": "scope", "variants": ["скоуп"], "caseSensitive": false },
   { "id": "2400000B-0000-0000-0000-00000000000C", "canonical": "MVP", "variants": ["эм ви пи"], "caseSensitive": true },
-  { "id": "2400000B-0000-0000-0000-00000000000D", "canonical": "PR", "variants": ["пи ар", "пиар"], "caseSensitive": true }
+  { "id": "2400000B-0000-0000-0000-00000000000D", "canonical": "PR", "variants": ["пи ар", "пиар"], "caseSensitive": true },
+
+  { "id": "25000001-0000-0000-0000-000000000001", "canonical": "GitHub", "variants": ["гитхаб", "гитхабе", "гитхабу", "гитхабом", "гитхаба", "гетхаб", "гетхабе", "гетхабу", "гетхабом", "гетхаба"], "caseSensitive": false },
+  { "id": "25000001-0000-0000-0000-000000000002", "canonical": "Basecamp", "variants": ["бейскэмп", "бейскэмпе", "бейскэмпа", "бейскэмпу", "бейскемп", "бейскемпе", "бейскемпа", "бейскемпу", "бэйскэмп", "бэйскэмпе"], "caseSensitive": false },
+  { "id": "25000001-0000-0000-0000-000000000003", "canonical": "Homebrew", "variants": ["хоумбрю", "хомбрю", "хоумбру", "хоум брю"], "caseSensitive": false },
+  { "id": "25000001-0000-0000-0000-000000000004", "canonical": "README", "variants": ["ридми", "редм", "рид ми"], "caseSensitive": false },
+  { "id": "25000001-0000-0000-0000-000000000005", "canonical": "roadmap", "variants": ["роадмап", "роудмап", "роудмоп", "роудмэп", "роадмапе", "роудмапе"], "caseSensitive": false },
+  { "id": "25000001-0000-0000-0000-000000000006", "canonical": "JSON", "variants": ["джейсон", "джейсоне", "джсон", "жсон"], "caseSensitive": false },
+  { "id": "25000001-0000-0000-0000-000000000007", "canonical": "Whisper", "variants": ["виспер", "виспере", "виспера"], "caseSensitive": false },
+  { "id": "25000001-0000-0000-0000-000000000008", "canonical": "Parakeet", "variants": ["паракит", "паракита", "паракиту", "паракитом", "паракете"], "caseSensitive": false }
 ]

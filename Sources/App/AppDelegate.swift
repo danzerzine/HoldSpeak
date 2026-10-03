@@ -78,6 +78,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if !prefs.engineChosen, ModelManager.shared.hasManagedModels() {
             prefs.engine = .whisper
         }
+        // Turbo was the default before Parakeet: an existing install that never
+        // picked a model keeps it instead of downloading Parakeet on update.
+        if prefs.engineChosen, UserDefaults.standard.object(forKey: "modelID") == nil {
+            prefs.modelID = .turbo
+        }
         appliedModelID = prefs.modelID
         appliedEngine = prefs.engineChosen ? prefs.engine : nil
         // A fresh install loads nothing until onboarding picks an engine; Gemini

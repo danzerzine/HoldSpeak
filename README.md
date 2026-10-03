@@ -56,7 +56,7 @@ Your preferences, history, and downloaded models live in `~/Library/Application 
 
 ### Model
 
-The default is **Turbo (large-v3 turbo, ~1.5 GB)** — the best quality/speed trade-off. You can switch to Tiny or Small in Preferences → Audio.
+The default is **Parakeet Ultra (~610 MB)** — fast and accurate for Russian and English. You can switch to a Whisper model (Tiny, Small, Turbo) in Preferences → Audio; installs that were on Turbo stay on it after an update.
 
 If you already have MacWhisper / another WhisperKit client installed, their models will be picked up automatically. Otherwise the first model is downloaded to `~/Library/Application Support/HoldSpeak/Models/`.
 
@@ -94,9 +94,8 @@ The delay between releasing the hotkey and text appearing in the input is domina
 - **Pick a smaller model.** Preferences → Audio → *Model*:
   - **Tiny (~75 MB)** — fastest (~80–150 ms on Apple Silicon for a short utterance), lowest quality. Good for quick English/single-language dictation.
   - **Small (~470 MB)** — middle ground.
-  - **Turbo full (~1.5 GB)** — default; best quality but ~400–800 ms per utterance.
-  - **Turbo compressed (~630 MB)** — the same Turbo with quantized weights: a third of the disk and memory, about the same speed. The first load on a Mac compiles it for the Neural Engine and takes several minutes; later loads are fast.
-  - **Parakeet Ultra (~610 MB)** — NVIDIA Parakeet (a post-trained v3), run with FluidAudio instead of WhisperKit. About 20× faster than Whisper on the same Mac, 25 languages including Russian and Ukrainian. It detects the language itself, so the Primary language setting does not apply to it. Needs macOS 14.
+  - **Turbo (~1.5 GB)** — the best Whisper, but ~400–800 ms per utterance.
+  - **Parakeet Ultra (~610 MB)** — default. NVIDIA Parakeet (a post-trained v3), run with FluidAudio instead of WhisperKit. About 20× faster than Whisper on the same Mac, 25 languages including Russian and Ukrainian. It detects the language itself, so the Primary language setting does not apply to it. Needs macOS 14.
 - **Set a fixed language** instead of Auto. Preferences → Audio → *Primary language*: picking Russian or English skips an extra language-detection forward pass that Auto mode runs before transcription.
 
 Combining **Tiny + explicit language** gives the lowest end-to-end latency. Combining **Turbo + Auto** gives the best quality but is the slowest path.

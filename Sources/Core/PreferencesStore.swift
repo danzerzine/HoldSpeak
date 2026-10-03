@@ -64,7 +64,6 @@ public enum WhisperModelID: String, CaseIterable, Identifiable {
     case tiny = "openai_whisper-tiny"
     case small = "openai_whisper-small"
     case turbo = "openai_whisper-large-v3-v20240930"
-    case turboCompressed = "openai_whisper-large-v3-v20240930_turbo_632MB"
     /// NVIDIA Parakeet, run by FluidAudio rather than WhisperKit; raw value is its folder name.
     case parakeetUltra = "parakeet-ultra"
     public var id: String { rawValue }
@@ -73,9 +72,8 @@ public enum WhisperModelID: String, CaseIterable, Identifiable {
         switch self {
         case .tiny:  return "Tiny (~75 MB)"
         case .small: return "Small (~470 MB)"
-        case .turbo: return "Turbo full — large-v3 turbo (~1.5 GB, recommended)"
-        case .turboCompressed: return "Turbo compressed — same model, quantized (~630 MB, slower first load)"
-        case .parakeetUltra: return "Parakeet Ultra — NVIDIA, 25 languages, ~20× faster (~610 MB)"
+        case .turbo: return "Turbo — large-v3 turbo (~1.5 GB)"
+        case .parakeetUltra: return "Parakeet Ultra — NVIDIA, 25 languages, ~20× faster (~610 MB, recommended)"
         }
     }
     /// For the closed dropdown, where the full label gets truncated.
@@ -83,8 +81,7 @@ public enum WhisperModelID: String, CaseIterable, Identifiable {
         switch self {
         case .tiny:  return "Tiny (~75 MB)"
         case .small: return "Small (~470 MB)"
-        case .turbo: return "Turbo full (~1.5 GB)"
-        case .turboCompressed: return "Turbo compressed (~630 MB)"
+        case .turbo: return "Turbo (~1.5 GB)"
         case .parakeetUltra: return "Parakeet Ultra (~610 MB)"
         }
     }
@@ -118,7 +115,7 @@ public final class PreferencesStore: ObservableObject {
     @AppStorage("hotkeyBindingJSON") private var hotkeyBindingJSON: String = ""
     @AppStorage("holdThresholdMs") public var holdThresholdMs: Int = 150
     @AppStorage("hudPosition")     public var hudPosition: HUDPosition = .bottomCenter
-    @AppStorage("modelID")         public var modelID: WhisperModelID = .turbo
+    @AppStorage("modelID")         public var modelID: WhisperModelID = .parakeetUltra
     @AppStorage("geminiModel")     public var geminiModel: GeminiModelID = .transcribe
     /// Empty until the user picks an engine in onboarding.
     @AppStorage("transcriptionEngine") private var engineRaw: String = ""
