@@ -9,10 +9,19 @@ final class OverlayWindow {
     /// Bumped by every show/flash so a stale hide animation doesn't order out newer content.
     private var generation = 0
     private var flashHide: DispatchWorkItem?
+    /// What the panel shows now, unwrapped, so present() can measure it.
+    private var content: AnyView
+    /// The panel never gets smaller than this: the recording pill sits centred in it
+    /// with room for its shadow, as before the merge with upstream.
+    private static let minSize = NSSize(width: 420, height: 84)
+    /// The transparent margin under the pill; the placement offsets it, keeping
+    /// the pill where it used to sit.
+    private static let shadowInset: CGFloat = 14
 
     init(prefs: PreferencesStore = .shared, content: AnyView) {
         self.prefs = prefs
-        panel = NSPanel(contentRect: .init(x: 0, y: 0, width: 420, height: 56),
+        self.content = content
+        panel = NSPanel(contentRect: .init(origin: .zero, size: Self.minSize),
                         styleMask: [.borderless, .nonactivatingPanel],
                         backing: .buffered, defer: true)
         panel.isFloatingPanel = true
@@ -30,7 +39,10 @@ final class OverlayWindow {
         panel.contentView = hosting
     }
 
-    func update(_ content: AnyView) { hosting.rootView = Self.centred(content) }
+    func update(_ content: AnyView) {
+        self.content = content
+        hosting.rootView = Self.centred(content)
+    }
 
     private static func centred(_ content: AnyView) -> AnyView {
         AnyView(content.frame(maxWidth: .infinity, maxHeight: .infinity))
@@ -54,9 +66,11 @@ final class OverlayWindow {
         flashHide?.cancel()
         flashHide = nil
         generation += 1
-        // The recording pill and a message differ in size; fit the panel to whichever
-        // is shown now, and keep it fixed while it is on screen.
-        panel.setContentSize(hosting.fittingSize)
+        // A long message can outgrow the pill's panel; measure the bare content (the
+        // centring frame would report no size) and keep the panel fixed while shown.
+        let fit = NSHostingView(rootView: content).fittingSize
+        panel.setContentSize(NSSize(width: max(Self.minSize.width, fit.width),
+                                    height: max(Self.minSize.height, fit.height)))
         reposition(anchor: anchor)
         panel.alphaValue = 0
         panel.orderFrontRegardless()
@@ -83,8 +97,7 @@ final class OverlayWindow {
     private func reposition(anchor: CGRect?) {
         guard let screen = NSScreen.main else { return }
         let frame = panel.frame
-        // The content sits inside a transparent margin; place the visible capsule.
-        let m = HUDChrome.margin
+        let m = Self.shadowInset
         switch prefs.hudPosition {
         case .underMenuBarIcon:
             if let anchor {
@@ -93,7 +106,7 @@ final class OverlayWindow {
                 panel.setFrameOrigin(NSPoint(x: x, y: y))
             } else {
                 let vf = screen.visibleFrame
-                panel.setFrameOrigin(NSPoint(x: vf.maxX - frame.width - 16 + m,
+                panel.setFrameOrigin(NSPoint(x: vf.maxX - frame.width - 16,
                                              y: vf.maxY - frame.height - 6 + m))
             }
         case .bottomCenter:

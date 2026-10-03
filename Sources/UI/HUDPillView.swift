@@ -13,8 +13,6 @@ final class HUDAmplitudeModel: ObservableObject {
     /// How far (0...1 of one sample) the waveform has scrolled since the last
     /// sample, so it glides left instead of jumping.
     @Published private(set) var scroll: CGFloat = 0
-    /// Overall smoothed speech level, 0...1 — drives the pill's slight width swell.
-    @Published private(set) var level: CGFloat = 0
     @Published private(set) var phase: Phase = .listening
 
     static let shared = HUDAmplitudeModel()
@@ -26,7 +24,6 @@ final class HUDAmplitudeModel: ObservableObject {
     private var smoothed: Double = 0
     /// Fast attack, slower release: the waveform swells with a word and eases off.
     private var follower = LevelEnvelope(attack: 0.03, release: 0.12)
-    private var overall = LevelEnvelope(attack: 0.08, release: 0.3)
 
     private init() {}
 
@@ -39,7 +36,6 @@ final class HUDAmplitudeModel: ObservableObject {
         sinceSample = 0
         scroll = 0
         follower.reset()
-        overall.reset()
         samples = samples.map { _ in 0 }
         lastTick = CACurrentMediaTime()
         let timer = Timer(timeInterval: 1.0 / 60, repeats: true) { [weak self] _ in
@@ -70,7 +66,6 @@ final class HUDAmplitudeModel: ObservableObject {
 
     private func tick(dt: Double) {
         let value = CGFloat(follower.step(toward: smoothed, dt: dt))
-        level = CGFloat(overall.step(toward: smoothed, dt: dt))
         sinceSample += dt
         if sinceSample >= Self.sampleStep {
             sinceSample -= Self.sampleStep
@@ -101,7 +96,7 @@ struct HUDPillView: View {
                     .transition(.scale(scale: 0.1, anchor: .leading).combined(with: .opacity))
             }
         }
-        .padding(.horizontal, 18 + (model.phase == .listening ? model.level * 2 : 0))
+        .padding(.horizontal, 18)
         .frame(height: 43)
         .modifier(HUDChrome())
         .animation(.spring(response: 0.35, dampingFraction: 0.86), value: model.phase)
@@ -174,31 +169,22 @@ struct HUDMessageView: View {
     }
 }
 
-/// Dark capsule behind the HUD content: smoked Liquid Glass on macOS 26+, a near-black
-/// capsule with a soft two-layer shadow elsewhere. The margin leaves room for the
-/// shadow inside the panel, so it isn't clipped into a dark rectangle.
+/// Near-black capsule with a soft two-layer shadow behind the HUD content, on every
+/// macOS version. The margin leaves room for the shadow inside the panel.
 struct HUDChrome: ViewModifier {
-    static let margin: CGFloat = 22
+    static let margin: CGFloat = 20
 
     func body(content: Content) -> some View {
-        Group {
-            if #available(macOS 26, *) {
-                // A tint alone barely darkens the glass over bright windows.
-                content
-                    .background(Capsule().fill(Color.black.opacity(0.55)))
-                    .glassEffect(.regular, in: Capsule())
-            } else {
-                content.background(
-                    Capsule()
-                        .fill(Color.black.opacity(0.9))
-                        .overlay(Capsule().stroke(PTT.surfaceBorder(.dark), lineWidth: 1))
-                        // Two-layer shadow: a tight contact edge plus a wide soft ambient.
-                        .shadow(color: .black.opacity(0.18), radius: 1.5, y: 1)
-                        .shadow(color: .black.opacity(0.28), radius: 14, y: 6)
-                )
-            }
-        }
-        .padding(Self.margin)
+        content
+            .background(
+                Capsule()
+                    .fill(Color.black.opacity(0.9))
+                    .overlay(Capsule().stroke(PTT.surfaceBorder(.dark), lineWidth: 1))
+                    // Two-layer shadow: a tight contact edge plus a wide soft ambient.
+                    .shadow(color: .black.opacity(0.18), radius: 1.5, y: 1)
+                    .shadow(color: .black.opacity(0.28), radius: 14, y: 6)
+            )
+            .padding(Self.margin)
     }
 }
 
