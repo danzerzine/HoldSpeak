@@ -124,6 +124,8 @@ public final class PreferencesStore: ObservableObject {
     @AppStorage("appTheme")        public var appTheme: AppTheme = .auto
     @AppStorage("autoPunctuation") public var autoPunctuation: Bool = true
     @AppStorage("autoCapitalize")  public var autoCapitalize: Bool = true
+    /// Type Parakeet's running transcript into the focused field while the hotkey is held.
+    @AppStorage("liveTyping")      public var liveTyping: Bool = false
     @AppStorage("metricsResetAtMs") public var metricsResetAtMs: Int = 0
     @AppStorage("inputDevice")     private var inputDeviceRaw: String = InputSelection.avoidBluetooth.rawValue
 

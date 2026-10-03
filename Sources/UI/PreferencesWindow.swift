@@ -433,6 +433,17 @@ struct PreferencesView: View {
                 .toggleStyle(.checkbox)
                 .controlSize(.small)
             }
+
+            labeledRow("") {
+                Toggle(isOn: $prefs.liveTyping) {
+                    Text("Type while speaking (Parakeet only)")
+                        .font(.system(size: 13))
+                        .foregroundColor(PTT.textBody(scheme))
+                }
+                .toggleStyle(.checkbox)
+                .controlSize(.small)
+                .disabled(!(prefs.engine == .whisper && prefs.modelID.isParakeet))
+            }
         }
     }
 
