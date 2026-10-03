@@ -63,10 +63,7 @@ struct HUDPillView: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 6)
         .frame(height: 30)
-        .background(
-            RoundedRectangle(cornerRadius: 15)
-                .fill(Color.black)
-        )
+        .modifier(HUDChrome())
     }
 }
 
@@ -95,9 +92,27 @@ struct HUDMessageView: View {
         .padding(.vertical, 7)
         // Report the full text width so the panel grows to fit instead of truncating.
         .fixedSize()
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(Color.black)
-        )
+        .modifier(HUDChrome())
+    }
+}
+
+/// Dark capsule behind the HUD content: smoked Liquid Glass on macOS 26+, solid
+/// black elsewhere. The glass is darkened so white bars and text stay readable over
+/// light windows; the margin leaves room for the glass shadow inside the panel.
+struct HUDChrome: ViewModifier {
+    static let margin: CGFloat = 10
+
+    func body(content: Content) -> some View {
+        Group {
+            if #available(macOS 26, *) {
+                // A tint alone barely darkens the glass over bright windows.
+                content
+                    .background(Capsule().fill(Color.black.opacity(0.55)))
+                    .glassEffect(.regular, in: Capsule())
+            } else {
+                content.background(Capsule().fill(Color.black))
+            }
+        }
+        .padding(Self.margin)
     }
 }

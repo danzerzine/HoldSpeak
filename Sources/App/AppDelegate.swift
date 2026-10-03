@@ -232,7 +232,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .sink { [weak self] error in
                 pttLog("Recorder failure: \(error)")
                 guard let self else { return }
-                self.menu.setRecording(false)
                 self.overlay.hide()
                 if case AudioRecorderError.stalled = error {
                     self.notify("Microphone not responding", "Audio was reset — try again.")
@@ -245,7 +244,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func startRecording() {
         pttLog("startRecording")
         recorder.start(input: PreferencesStore.shared.inputSelection)
-        menu.setRecording(true)
         overlay.update(AnyView(hudView()))
         overlay.show(anchor: menu.statusItemFrame)
     }
@@ -255,13 +253,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         recorder.stop { [weak self] in
             _ = self?.engine.takeSamples() // discard the tap's audio
         }
-        menu.setRecording(false)
         overlay.hide()
     }
 
     private func endRecording() {
         pttLog("endRecording")
-        menu.setRecording(false)
         overlay.hide()
         recorder.stop { [weak self] in
             guard let self else { return }

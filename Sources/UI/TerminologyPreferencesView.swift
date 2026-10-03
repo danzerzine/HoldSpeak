@@ -125,7 +125,7 @@ struct TerminologyPreferencesView: View {
             if store.hasSeed(for: store.activeLanguage) {
                 Button { store.loadDefaults(mergeStrategy: .replaceAll) } label: {
                     pillText("Load default IT dictionary")
-                }.buttonStyle(.plain)
+                }.pttButton()
             } else {
                 Text("No default dictionary is bundled for this language — add terms manually.")
                     .font(.system(size: 11))
@@ -155,8 +155,8 @@ struct TerminologyPreferencesView: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .background(RoundedRectangle(cornerRadius: 8).fill(PTT.fieldBG(scheme)))
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(PTT.fieldBorder(scheme), lineWidth: 1))
+        .pttSurface(glass: Capsule(), fallback: RoundedRectangle(cornerRadius: 8),
+                    fill: PTT.fieldBG(scheme), border: PTT.fieldBorder(scheme))
     }
 
     private var noMatchesState: some View {
@@ -200,22 +200,22 @@ struct TerminologyPreferencesView: View {
         HStack(spacing: 8) {
             Button { editing = TerminologyEntry(canonical: "", variants: []) } label: {
                 pillText("Add term")
-            }.buttonStyle(.plain)
+            }.pttButton()
 
             Button { confirmLoadDefaults() } label: {
                 pillText("Load defaults…")
-            }.buttonStyle(.plain)
+            }.pttButton()
 
             Spacer()
 
             HStack(spacing: 8) {
                 Button { importJSON() } label: {
                     pillText("Import…")
-                }.buttonStyle(.plain)
+                }.pttButton()
 
                 Button { exportJSON() } label: {
                     pillText("Export…")
-                }.buttonStyle(.plain)
+                }.pttButton()
             }
             .background(
                 GeometryReader { g in
@@ -230,12 +230,6 @@ struct TerminologyPreferencesView: View {
 
     private func pillText(_ s: String) -> some View {
         Text(s)
-            .font(.system(size: 13, weight: .medium))
-            .foregroundColor(PTT.textPrimary(scheme))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(RoundedRectangle(cornerRadius: 8).fill(PTT.buttonBG(scheme)))
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(PTT.fieldBorder(scheme), lineWidth: 1))
     }
 
     // MARK: - Actions

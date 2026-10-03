@@ -24,14 +24,9 @@ struct GeminiKeyEditor: View {
                     .onSubmit(save)
                 Button(action: save) {
                     Text(check == .checking ? "Checking…" : "Save")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(PTT.textPrimary(scheme))
-                        .frame(width: 64)
-                        .padding(.vertical, 4)
-                        .background(RoundedRectangle(cornerRadius: 7).fill(PTT.buttonBG(scheme)))
-                        .overlay(RoundedRectangle(cornerRadius: 7).stroke(PTT.fieldBorder(scheme), lineWidth: 1))
+                        .frame(minWidth: 36)
                 }
-                .buttonStyle(.plain)
+                .pttButton()
                 .disabled(trimmedDraft.isEmpty || check == .checking)
             }
 

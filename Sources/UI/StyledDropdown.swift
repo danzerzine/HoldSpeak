@@ -28,8 +28,10 @@ struct StyledDropdown<V: Hashable, Content: View>: View {
             .padding(.leading, 12)
             .padding(.trailing, 8)
             .frame(width: width, height: 28, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 8).fill(PTT.fieldBG(scheme)))
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(PTT.fieldBorder(scheme), lineWidth: 1))
+            .contentShape(Rectangle())
+            .pttSurface(glass: Capsule(), fallback: RoundedRectangle(cornerRadius: 8),
+                        fill: PTT.fieldBG(scheme), border: PTT.fieldBorder(scheme),
+                        interactive: true)
         }
         .menuStyle(.button)
         .buttonStyle(.plain)

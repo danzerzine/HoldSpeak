@@ -78,6 +78,7 @@ struct PreferencesView: View {
 
     @Environment(\.colorScheme) private var scheme
     @State private var tab: PrefsTab = .general
+    @Namespace private var tabNamespace
     @State private var updateStatus: String?
     @State private var history: [TranscriptionRecord] = []
     @State private var inputDevices: [InputDevice.Info] = []
@@ -89,11 +90,7 @@ struct PreferencesView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            tabBar
-                .padding(.vertical, 14)
-                .frame(maxWidth: .infinity)
-
+        Group {
             if tab == .terminology {
                 TerminologyPreferencesView()
                     .padding(.horizontal, 28)
@@ -117,9 +114,9 @@ struct PreferencesView: View {
                 }
             }
         }
+        .modifier(PrefsTopBar { tabBar })
         .frame(width: 560, height: 428)
-        .background(VisualEffectBackground(material: .windowBackground))
-        .background(PTT.prefsBG(scheme))
+        .modifier(PrefsWindowBackground())
         .preferredColorScheme(colorSchemeOverride)
         .onAppear {
             tab = initialTab
@@ -167,24 +164,29 @@ struct PreferencesView: View {
     private var tabBar: some View {
         HStack(spacing: 2) {
             ForEach(PrefsTab.allCases) { t in
-                Button { tab = t } label: {
+                Button {
+                    withAnimation(.snappy(duration: 0.25)) { tab = t }
+                } label: {
                     Text(t.title)
                         .font(.system(size: 13, weight: tab == t ? .semibold : .regular))
                         .foregroundColor(tab == t ? PTT.textPrimary(scheme) : PTT.textMuted(scheme))
                         .padding(.horizontal, 14)
                         .padding(.vertical, 6)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(tab == t ? PTT.segmentSelected(scheme) : .clear)
-                        )
+                        .background {
+                            if tab == t {
+                                Capsule()
+                                    .fill(PTT.segmentSelected(scheme))
+                                    .matchedGeometryEffect(id: "selectedTab", in: tabNamespace)
+                            }
+                        }
+                        .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
             }
         }
         .padding(3)
-        .background(
-            RoundedRectangle(cornerRadius: 10).fill(PTT.segmentBG(scheme))
-        )
+        .pttSurface(glass: Capsule(), fallback: Capsule(), fill: PTT.segmentBG(scheme))
+        .padding(.vertical, 14)
     }
 
     // MARK: - Rows
@@ -213,9 +215,11 @@ struct PreferencesView: View {
             labeledRow("Hold threshold", alignment: .center) {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 12) {
+                        // Rounded in the setter rather than with `step:`, which draws
+                        // a tick for every 10 ms on macOS 26+.
                         Slider(value: .init(get: { Double(prefs.holdThresholdMs) },
-                                            set: { prefs.holdThresholdMs = Int($0) }),
-                               in: 50...800, step: 10)
+                                            set: { prefs.holdThresholdMs = Int(($0 / 10).rounded()) * 10 }),
+                               in: 50...800)
                             .frame(width: 260)
                         Text("\(prefs.holdThresholdMs) ms")
                             .font(.system(size: 13, weight: .medium))
@@ -272,18 +276,8 @@ struct PreferencesView: View {
                         }
                     } label: {
                         Text("Check for updates")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(PTT.textPrimary(scheme))
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 6)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8).fill(PTT.buttonBG(scheme))
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8).stroke(PTT.fieldBorder(scheme), lineWidth: 1)
-                            )
                     }
-                    .buttonStyle(.plain)
+                    .pttButton()
 
                     Text(updateStatus ?? "You're on v\(UpdateChecker.currentVersion)")
                         .font(.system(size: 11))
@@ -393,18 +387,8 @@ struct PreferencesView: View {
                             Task { await modelsVM.download(prefs.modelID) }
                         } label: {
                             Text("Download selected model")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundColor(modelsVM.isLocated(prefs.modelID) ? PTT.textMuted(scheme) : PTT.textPrimary(scheme))
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 6)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8).fill(PTT.buttonBG(scheme))
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8).stroke(PTT.fieldBorder(scheme), lineWidth: 1)
-                                )
                         }
-                        .buttonStyle(.plain)
+                        .pttButton()
                         .disabled(modelsVM.isLocated(prefs.modelID))
                     }
                 }
@@ -423,18 +407,9 @@ struct PreferencesView: View {
                             .monospacedDigit()
                         Button(action: confirmDeleteModels) {
                             Text("Delete…")
-                                .font(.system(size: 13, weight: .medium))
                                 .foregroundColor(PTT.recordingRed)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 6)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8).fill(PTT.buttonBG(scheme))
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8).stroke(PTT.fieldBorder(scheme), lineWidth: 1)
-                                )
                         }
-                        .buttonStyle(.plain)
+                        .pttButton()
                     }
                 }
             }
@@ -473,7 +448,7 @@ struct PreferencesView: View {
                 Button {
                     let alert = NSAlert()
                     alert.messageText = "Reset metrics?"
-                    alert.informativeText = "Total words and WPM in the popover will start counting from zero. History is kept."
+                    alert.informativeText = "Dictation counts and WPM in the popover will start from zero. History is kept."
                     alert.addButton(withTitle: "Reset")
                     alert.addButton(withTitle: "Cancel")
                     if alert.runModal() == .alertFirstButtonReturn {
@@ -481,23 +456,13 @@ struct PreferencesView: View {
                     }
                 } label: {
                     Text("Reset metrics")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(PTT.textPrimary(scheme))
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 6)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8).fill(PTT.buttonBG(scheme))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8).stroke(PTT.fieldBorder(scheme), lineWidth: 1)
-                        )
                 }
-                .buttonStyle(.plain)
+                .pttButton()
 
                 Button {
                     let alert = NSAlert()
                     alert.messageText = "Clear all transcription history?"
-                    alert.informativeText = "This cannot be undone and resets metrics."
+                    alert.informativeText = "This cannot be undone. Dictation counts and WPM are kept."
                     alert.addButton(withTitle: "Clear")
                     alert.addButton(withTitle: "Cancel")
                     if alert.runModal() == .alertFirstButtonReturn {
@@ -506,18 +471,9 @@ struct PreferencesView: View {
                     }
                 } label: {
                     Text("Clear history…")
-                        .font(.system(size: 13, weight: .medium))
                         .foregroundColor(PTT.recordingRed)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 6)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8).fill(PTT.buttonBG(scheme))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8).stroke(PTT.fieldBorder(scheme), lineWidth: 1)
-                        )
                 }
-                .buttonStyle(.plain)
+                .pttButton()
                 .disabled(history.isEmpty)
             }
 
@@ -545,6 +501,41 @@ struct PreferencesView: View {
                 .foregroundColor(PTT.textBody(scheme))
 
             AddressRow(label: "USDT (TRC-20)", value: "TJYkdABdvB587bsWbyCLQ25g8JmTqiXs5h")
+        }
+    }
+}
+
+// MARK: - Window chrome
+
+/// The tab bar floats over the content. On macOS 26+ it is a glass bar the content
+/// scrolls under; older systems give it the window colour so nothing shows through.
+private struct PrefsTopBar<Bar: View>: ViewModifier {
+    @ViewBuilder var bar: () -> Bar
+    @Environment(\.colorScheme) private var scheme
+
+    func body(content: Content) -> some View {
+        if #available(macOS 26, *) {
+            content.safeAreaBar(edge: .top, spacing: 0) { bar() }
+        } else {
+            content.safeAreaInset(edge: .top, spacing: 0) {
+                bar().frame(maxWidth: .infinity).background(PTT.prefsBG(scheme))
+            }
+        }
+    }
+}
+
+/// macOS 26+ uses the standard window background, which Liquid Glass controls are
+/// designed against; older systems keep the blurred dark panel.
+private struct PrefsWindowBackground: ViewModifier {
+    @Environment(\.colorScheme) private var scheme
+
+    func body(content: Content) -> some View {
+        if #available(macOS 26, *) {
+            content.background(Color(nsColor: .windowBackgroundColor))
+        } else {
+            content
+                .background(VisualEffectBackground(material: .windowBackground))
+                .background(PTT.prefsBG(scheme))
         }
     }
 }

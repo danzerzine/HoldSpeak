@@ -36,10 +36,6 @@ final class MenuBarController {
         return win.convertToScreen(btn.convert(btn.bounds, to: nil))
     }
 
-    func setRecording(_ active: Bool) {
-        statusItem.button?.contentTintColor = active ? .systemRed : nil
-    }
-
     @objc private func togglePopover(_ sender: Any?) {
         guard let btn = statusItem.button else { return }
         if popover.isShown {

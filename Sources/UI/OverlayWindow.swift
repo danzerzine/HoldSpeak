@@ -76,21 +76,23 @@ final class OverlayWindow {
     private func reposition(anchor: CGRect?) {
         guard let screen = NSScreen.main else { return }
         let frame = panel.frame
+        // The content sits inside a transparent margin; place the visible capsule.
+        let m = HUDChrome.margin
         switch prefs.hudPosition {
         case .underMenuBarIcon:
             if let anchor {
                 let x = anchor.midX - frame.width / 2
-                let y = anchor.minY - frame.height - 6
+                let y = anchor.minY - frame.height - 6 + m
                 panel.setFrameOrigin(NSPoint(x: x, y: y))
             } else {
                 let vf = screen.visibleFrame
-                panel.setFrameOrigin(NSPoint(x: vf.maxX - frame.width - 16,
-                                             y: vf.maxY - frame.height - 6))
+                panel.setFrameOrigin(NSPoint(x: vf.maxX - frame.width - 16 + m,
+                                             y: vf.maxY - frame.height - 6 + m))
             }
         case .bottomCenter:
             let vf = screen.visibleFrame
             panel.setFrameOrigin(NSPoint(x: vf.midX - frame.width / 2,
-                                         y: vf.minY + 80))
+                                         y: vf.minY + 80 - m))
         }
     }
 }

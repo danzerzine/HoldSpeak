@@ -85,3 +85,91 @@ struct VisualEffectBackground: NSViewRepresentable {
         v.blendingMode = blending
     }
 }
+
+// MARK: - Liquid Glass
+//
+// macOS 26+ draws these as Liquid Glass; older systems keep the flat look.
+
+extension View {
+    /// Glass in `glass` on macOS 26+, otherwise a `fill` in `fallback` with an optional hairline.
+    @ViewBuilder
+    func pttSurface<G: Shape, F: Shape>(
+        glass: G, fallback: F, fill: Color, border: Color? = nil,
+        tint: Color? = nil, interactive: Bool = false
+    ) -> some View {
+        if #available(macOS 26, *) {
+            glassEffect(Glass.regular.tint(tint).interactive(interactive), in: glass)
+        } else {
+            background(fallback.fill(fill))
+                .overlay { if let border { fallback.stroke(border, lineWidth: 1) } }
+        }
+    }
+
+    /// Muted text. On glass a fixed grey washes out against whatever is behind the
+    /// panel, so macOS 26+ uses the vibrant hierarchical style instead.
+    @ViewBuilder
+    func pttMuted(_ fallback: Color, level: HierarchicalLevel = .secondary) -> some View {
+        if #available(macOS 26, *) {
+            switch level {
+            case .secondary: foregroundStyle(.secondary)
+            case .tertiary:  foregroundStyle(.tertiary)
+            }
+        } else {
+            foregroundColor(fallback)
+        }
+    }
+
+    /// Secondary push button: glass on macOS 26+, the bordered pill elsewhere.
+    @ViewBuilder
+    func pttButton() -> some View {
+        let styled = font(.system(size: 13, weight: .medium))
+        if #available(macOS 26, *) {
+            // The glass style dims an unstyled label; a label's own colour (red) still wins.
+            styled.foregroundStyle(.primary).buttonStyle(.glass)
+        } else {
+            styled.buttonStyle(PTTBorderedButtonStyle())
+        }
+    }
+
+    /// Primary action button.
+    @ViewBuilder
+    func pttProminentButton() -> some View {
+        if #available(macOS 26, *) {
+            buttonStyle(.glassProminent)
+        } else {
+            buttonStyle(.borderedProminent)
+        }
+    }
+
+    /// Small toolbar-like button: glass on macOS 26+, bare label elsewhere.
+    @ViewBuilder
+    func pttQuietButton(circle: Bool = false) -> some View {
+        if #available(macOS 26, *) {
+            if circle {
+                buttonStyle(.glass).buttonBorderShape(.circle)
+            } else {
+                buttonStyle(.glass)
+            }
+        } else {
+            buttonStyle(.plain)
+        }
+    }
+}
+
+enum HierarchicalLevel { case secondary, tertiary }
+
+struct PTTBorderedButtonStyle: ButtonStyle {
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundColor(PTT.textPrimary(scheme))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 6)
+            .background(RoundedRectangle(cornerRadius: 8).fill(PTT.buttonBG(scheme)))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(PTT.fieldBorder(scheme), lineWidth: 1))
+            .opacity(isEnabled ? (configuration.isPressed ? 0.7 : 1) : 0.5)
+            .contentShape(Rectangle())
+    }
+}

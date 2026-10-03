@@ -3,7 +3,7 @@ import AppKit
 
 @MainActor
 final class PopoverViewModel: ObservableObject {
-    @Published var metrics: Metrics = .init(totalWords: 0, wpm7d: 0)
+    @Published var metrics: Metrics = .zero
     @Published var recent: [TranscriptionRecord] = []
     @Published var hasMore: Bool = false
     @Published var copiedID: Int64?
@@ -20,7 +20,7 @@ final class PopoverViewModel: ObservableObject {
     }
 
     func refresh() {
-        metrics = (try? metricsEngine.current(now: Date())) ?? .init(totalWords: 0, wpm7d: 0)
+        metrics = (try? metricsEngine.current(now: Date())) ?? .zero
         let fetched = (try? store.recent(limit: Self.recentVisible + 1)) ?? []
         hasMore = fetched.count > Self.recentVisible
         recent = Array(fetched.prefix(Self.recentVisible))
@@ -69,12 +69,7 @@ struct PopoverView: View {
             footer
         }
         .frame(width: 320)
-        .background(VisualEffectBackground(material: .popover))
-        .background(PTT.popoverBG(scheme))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(PTT.surfaceBorder(scheme), lineWidth: 1)
-        )
+        .modifier(PopoverChrome())
         .preferredColorScheme(colorSchemeOverride)
     }
 
@@ -99,7 +94,7 @@ struct PopoverView: View {
             Spacer()
             Text(hotkeyHint)
                 .font(.system(size: 12, weight: .medium))
-                .foregroundColor(PTT.textMuted(scheme))
+                .pttMuted(PTT.textMuted(scheme))
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 16)
@@ -111,7 +106,8 @@ struct PopoverView: View {
 
     private var statsRow: some View {
         HStack(spacing: 10) {
-            statCard(value: "\(vm.metrics.totalWords.formatted())", label: "total words")
+            statCard(value: "\(vm.metrics.dictationsToday.formatted())",
+                     label: "today · \(vm.metrics.dictationsYesterday.formatted()) yesterday")
             statCard(value: "\(vm.metrics.wpm7d)", label: "wpm · 7d")
         }
         .padding(.horizontal, 18)
@@ -125,15 +121,15 @@ struct PopoverView: View {
                 .foregroundColor(PTT.textPrimary(scheme))
             Text(label)
                 .font(.system(size: 10, weight: .regular))
-                .foregroundColor(PTT.textMuted(scheme))
+                .pttMuted(PTT.textMuted(scheme))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 10).fill(PTT.cardBG(scheme))
+            RoundedRectangle(cornerRadius: 12).fill(PTT.cardBG(scheme))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 10).stroke(PTT.cardBorder(scheme), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 12).stroke(PTT.cardBorder(scheme), lineWidth: 1)
         )
     }
 
@@ -144,13 +140,13 @@ struct PopoverView: View {
             Text("RECENT")
                 .font(.system(size: 9, weight: .medium))
                 .tracking(1.08)
-                .foregroundColor(PTT.textCaption(scheme))
+                .pttMuted(PTT.textCaption(scheme))
                 .padding(.bottom, 2)
 
             if vm.recent.isEmpty {
                 Text("No transcriptions yet.")
                     .font(.system(size: 13))
-                    .foregroundColor(PTT.textMuted(scheme))
+                    .pttMuted(PTT.textMuted(scheme))
                     .padding(.vertical, 8)
             } else {
                 ForEach(vm.recent) { r in
@@ -196,7 +192,7 @@ struct PopoverView: View {
                 } else {
                     copyIcon
                         .frame(width: 14, height: 14)
-                        .foregroundColor(PTT.textMuted(scheme))
+                        .pttMuted(PTT.textMuted(scheme))
                 }
             }
             .padding(.vertical, 8)
@@ -221,7 +217,7 @@ struct PopoverView: View {
                     .frame(width: 16, height: 16)
                     .foregroundColor(PTT.textPrimary(scheme))
             }
-            .buttonStyle(.plain)
+            .pttQuietButton(circle: true)
             .help("Preferences")
 
             Spacer()
@@ -231,9 +227,9 @@ struct PopoverView: View {
             } label: {
                 Text("Quit")
                     .font(.system(size: 13))
-                    .foregroundColor(PTT.textMuted(scheme))
+                    .pttMuted(PTT.textMuted(scheme))
             }
-            .buttonStyle(.plain)
+            .pttQuietButton()
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 12)
@@ -250,12 +246,32 @@ struct PopoverView: View {
                 .foregroundColor(PTT.textBody(scheme))
             Spacer()
             Button("Download") { NSWorkspace.shared.open(upd.url) }
-                .buttonStyle(.borderedProminent)
+                .pttProminentButton()
                 .controlSize(.small)
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 10)
         .background(PTT.accentLink(scheme).opacity(0.10))
+    }
+}
+
+/// On macOS 26+ NSPopover draws Liquid Glass itself, so the content stays clear;
+/// older systems get the blurred panel with a hairline.
+private struct PopoverChrome: ViewModifier {
+    @Environment(\.colorScheme) private var scheme
+
+    func body(content: Content) -> some View {
+        if #available(macOS 26, *) {
+            content
+        } else {
+            content
+                .background(VisualEffectBackground(material: .popover))
+                .background(PTT.popoverBG(scheme))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(PTT.surfaceBorder(scheme), lineWidth: 1)
+                )
+        }
     }
 }
 

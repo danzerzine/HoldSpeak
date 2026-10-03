@@ -30,6 +30,8 @@ public protocol HistoryStoring {
     /// Metrics query: covers every utterance ever appended, not just the
     /// pruned history window shown to the user.
     func sumsSince(_ unixMs: Int64) throws -> (words: Int, durationMs: Int)
+    /// Dictations with `fromMs <= createdAt < toMs`, from the same unpruned table.
+    func count(fromMs: Int64, toMs: Int64) throws -> Int
     /// Clears the visible history (transcript text) only. Metrics are kept;
     /// they have their own reset via `metricsResetAtMs`.
     func clear() throws
@@ -135,6 +137,14 @@ public final class HistoryStore: HistoryStoring {
             let w: Int = row["w"] ?? 0
             let d: Int = row["d"] ?? 0
             return (w, d)
+        }
+    }
+
+    public func count(fromMs: Int64, toMs: Int64) throws -> Int {
+        try dbQueue.read { db in
+            try Int.fetchOne(db,
+                sql: "SELECT COUNT(*) FROM utterance_stats WHERE createdAt >= ? AND createdAt < ?",
+                arguments: [fromMs, toMs]) ?? 0
         }
     }
 

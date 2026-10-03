@@ -13,10 +13,10 @@ struct HotkeyRecorderView: View {
             Text(recording ? "Press a key…" : prefs.hotkey.label)
                 .frame(minWidth: 160, alignment: .center)
                 .padding(.vertical, 4).padding(.horizontal, 10)
-                .background(RoundedRectangle(cornerRadius: 6)
-                    .fill(Color.secondary.opacity(recording ? 0.2 : 0.1)))
-                .overlay(RoundedRectangle(cornerRadius: 6)
-                    .strokeBorder(Color.accentColor.opacity(recording ? 0.8 : 0), lineWidth: 1))
+                .pttSurface(glass: Capsule(), fallback: RoundedRectangle(cornerRadius: 6),
+                            fill: Color.secondary.opacity(recording ? 0.2 : 0.1),
+                            border: recording ? Color.accentColor.opacity(0.8) : nil,
+                            tint: recording ? Color.accentColor.opacity(0.3) : nil)
             Button(recording ? "Cancel" : "Change") { toggle() }
         }
         .onDisappear { stop() }

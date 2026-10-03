@@ -62,6 +62,7 @@ struct OnboardingView: View {
                 }
                 .disabled(choice == .gemini && !prefs.hasGeminiKey)
                 .keyboardShortcut(.defaultAction)
+                .modifier(PrimaryOnGlass())
             }
         }
     }
@@ -82,10 +83,14 @@ struct OnboardingView: View {
                 }
                 Spacer(minLength: 0)
             }
-            .padding(10)
+            .padding(12)
             .contentShape(Rectangle())
-            .background(RoundedRectangle(cornerRadius: 8).fill(Color.secondary.opacity(selected ? 0.12 : 0.05)))
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(selected ? Color.accentColor : .clear, lineWidth: 1))
+            .pttSurface(glass: RoundedRectangle(cornerRadius: 16),
+                        fallback: RoundedRectangle(cornerRadius: 8),
+                        fill: Color.secondary.opacity(selected ? 0.12 : 0.05),
+                        border: selected ? Color.accentColor : .clear,
+                        tint: selected ? Color.accentColor.opacity(0.35) : nil,
+                        interactive: true)
         }
         .buttonStyle(.plain)
     }
@@ -138,6 +143,7 @@ struct OnboardingView: View {
                 Button("Done") { onDone() }
                     .disabled(!perms.allGranted)
                     .keyboardShortcut(.defaultAction)
+                    .modifier(PrimaryOnGlass())
             }
         }
     }
@@ -165,5 +171,16 @@ struct OnboardingView: View {
 
     private func refresh() {
         perms = PermissionsManager.shared.current()
+    }
+}
+
+/// The default button is already blue below macOS 26; there it becomes prominent glass.
+private struct PrimaryOnGlass: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(macOS 26, *) {
+            content.buttonStyle(.glassProminent)
+        } else {
+            content
+        }
     }
 }
