@@ -56,7 +56,7 @@ Your preferences, history, and downloaded models live in `~/Library/Application 
 
 ### Model
 
-The default is **Turbo (large-v3 distilled, ~800 MB)** — the best quality/speed trade-off. You can switch to Tiny or Small in Preferences → Audio.
+The default is **Turbo (large-v3 turbo, ~1.5 GB)** — the best quality/speed trade-off. You can switch to Tiny or Small in Preferences → Audio.
 
 If you already have MacWhisper / another WhisperKit client installed, their models will be picked up automatically. Otherwise the first model is downloaded to `~/Library/Application Support/HoldSpeak/Models/`.
 
@@ -92,9 +92,9 @@ Privacy: with Gemini, each dictation's audio is sent to Google. Whisper stays th
 The delay between releasing the hotkey and text appearing in the input is dominated by the Whisper forward pass. Two levers:
 
 - **Pick a smaller model.** Preferences → Audio → *Model*:
-  - **Tiny (~40 MB)** — fastest (~80–150 ms on Apple Silicon for a short utterance), lowest quality. Good for quick English/single-language dictation.
-  - **Small (~250 MB)** — middle ground.
-  - **Turbo (~800 MB)** — default; best quality but ~400–800 ms per utterance.
+  - **Tiny (~75 MB)** — fastest (~80–150 ms on Apple Silicon for a short utterance), lowest quality. Good for quick English/single-language dictation.
+  - **Small (~470 MB)** — middle ground.
+  - **Turbo (~1.5 GB)** — default; best quality but ~400–800 ms per utterance.
 - **Set a fixed language** instead of Auto. Preferences → Audio → *Primary language*: picking Russian or English skips an extra language-detection forward pass that Auto mode runs before transcription.
 
 Combining **Tiny + explicit language** gives the lowest end-to-end latency. Combining **Turbo + Auto** gives the best quality but is the slowest path.

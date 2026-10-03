@@ -63,7 +63,7 @@ final class WhisperTranscriber {
         currentModelID = model
     }
 
-    /// Frees the model (~800 MB for turbo) when the user switches to Gemini.
+    /// Frees the model (~1.5 GB for turbo) when the user switches to Gemini.
     func unload() {
         requestedModelID = nil
         kit = nil

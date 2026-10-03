@@ -81,7 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         appliedModelID = prefs.modelID
         appliedEngine = prefs.engineChosen ? prefs.engine : nil
         // A fresh install loads nothing until onboarding picks an engine; Gemini
-        // never needs the ~800 MB Whisper model in memory.
+        // never needs the ~1.5 GB Whisper model in memory.
         if prefs.engineChosen, prefs.engine == .whisper {
             loadModel(prefs.modelID)
         }
