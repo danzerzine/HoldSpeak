@@ -9,7 +9,7 @@
 Local push-to-talk dictation for macOS. HoldSpeak is a **menu bar app** (no Dock icon, no windows in the way) — it lives in the status bar and stays out of your workflow until you hold the hotkey. Speak, release — recognized text is inserted into the focused input. Local by default: Whisper runs on GPU via WhisperKit. Optionally, you can switch to Google Gemini with your own API key.
 
 <p align="center">
-  <img src="docs/screenshots/popover.webp?v=3" width="320" alt="Menu bar popover" />
+  <img src="docs/screenshots/popover.webp?v=4" width="360" alt="Menu bar popover" />
 </p>
 
 A free, local alternative to paid Whisper wrappers. Built for one reason: talking to AI is faster than typing to it. Average typing speed hovers around 40–60 wpm; comfortable speech is 130–160 wpm — two to three times faster. As more of the dev loop moves into prompts to AI agents, raw typing throughput becomes a real ceiling on how quickly you can iterate. HoldSpeak lifts it: hold the hotkey, speak a full thought, release, it lands in the input.
@@ -20,9 +20,10 @@ A free, local alternative to paid Whisper wrappers. Built for one reason: talkin
 - **Optional cloud engine** — Google Gemini with your own API key, for higher accuracy on mixed-language speech and jargon
 - **Code-switching RU/EN/UK and more** — in auto mode the language is chosen only from the ones you have in System Settings → Language & Region
 - **Insertion without clipboard** — via `CGEventKeyboardSetUnicodeString`; password fields are skipped
-- **Menu bar popover** with the last 10 transcriptions (click to copy) and metrics: total words, 7-day avg WPM
-- **HUD overlay** while you hold the key: black pill with a live mic level; if a dictation fails (no model, bad API key, quota), the reason shows in the same pill
+- **Menu bar popover** with recent transcriptions (click to copy) and metrics: dictations today / yesterday, 7-day avg WPM
+- **HUD overlay** while you hold the key: dark pill with a live mic level; if a dictation fails (no model, bad API key, quota), the reason shows in the same pill
 - **Light text cleanup** — trims long "eeeeee / mmmmm / ummm", collapses 3+ consecutive repeats, capitalizes the first letter and adds a period
+- **Liquid Glass** on macOS 26 and later — the HUD, popover, Preferences and onboarding use the system glass; macOS 13–15 keep the classic look
 - **Terminology dictionary** — canonical IT terms (pull request, Kubernetes, Claude Code, …) replace misrecognized Russian transliterations in transcripts; ships with ~110 defaults and is fully editable
 
 ## Install
@@ -40,7 +41,7 @@ On first launch, choose how speech is recognized — **Whisper** (on this Mac, d
 The onboarding window has Open… and Re-check buttons.
 
 <p align="center">
-  <img src="docs/screenshots/onboarding.webp" width="480" alt="Onboarding · choose Whisper or Gemini" />
+  <img src="docs/screenshots/onboarding.webp?v=4" width="480" alt="Onboarding · choose Whisper or Gemini" />
 </p>
 
 ### Updating
@@ -67,10 +68,10 @@ Pick a Gemini model in Preferences → Audio → **Model** (or choose Gemini dur
 
 1. Create a key at [Google AI Studio → API keys](https://aistudio.google.com/apikey).
 2. **Set up billing** for the key's project in AI Studio. Without billing the key runs on the free tier, which stops after a couple dozen dictations a day — HoldSpeak then shows *"Gemini daily limit reached — set up billing"* in the HUD.
-3. Paste the key in HoldSpeak and click **Save**. The key is checked with Google and stored in the macOS Keychain, never in preferences files; it survives app updates.
+3. Paste the key in HoldSpeak and click **Save**. The key is checked with Google and stored in the macOS Keychain, never in preferences files; it survives app updates. After each update macOS asks once to let the new version read the key — enter your Mac password and click **Always Allow** (HoldSpeak is self-signed, so the Keychain sees every new build as a new app).
 
 <p align="center">
-  <img src="docs/screenshots/preferences-audio-gemini.webp" width="560" alt="Preferences · Audio with Gemini selected" />
+  <img src="docs/screenshots/preferences-audio-gemini.webp?v=4" width="560" alt="Preferences · Audio with Gemini selected" />
 </p>
 
 Models:
@@ -81,7 +82,7 @@ Models:
 If something goes wrong, the reason appears right in the HUD pill instead of a silent empty result:
 
 <p align="center">
-  <img src="docs/screenshots/hud-quota.webp" width="286" alt="HUD · Gemini daily limit reached" />
+  <img src="docs/screenshots/hud-quota.webp?v=4" width="334" alt="HUD · Gemini daily limit reached" />
 </p>
 
 Privacy: with Gemini, each dictation's audio is sent to Google. Whisper stays the default and never sends anything anywhere. Text cleanup, the "Add period" / "Capitalize" options and the terminology dictionary apply to both engines; Gemini also receives your dictionary's terms as spelling hints.
@@ -103,7 +104,7 @@ Combining **Tiny + explicit language** gives the lowest end-to-end latency. Comb
 1. Hold **Right Option** (or whatever you set in Preferences).
 2. Speak. A HUD appears in the top right corner (or bottom center — configurable) showing the mic level.
 3. Release the key. After ~1–2 s the text is inserted into the focused field.
-4. If the field lost focus — open the menu bar icon: it shows the last 10 transcriptions; click to copy.
+4. If the field lost focus — open the menu bar icon: it shows the recent transcriptions; click to copy.
 
 ### Short taps
 
@@ -118,9 +119,9 @@ By default, presses shorter than **150 ms** don't start recording — the key be
 - **Support**
 
 <p align="center">
-  <img src="docs/screenshots/preferences-general.webp" width="560" alt="Preferences · General" />
+  <img src="docs/screenshots/preferences-general.webp?v=4" width="560" alt="Preferences · General" />
   <br /><br />
-  <img src="docs/screenshots/preferences-audio.webp" width="560" alt="Preferences · Audio" />
+  <img src="docs/screenshots/preferences-audio.webp?v=4" width="560" alt="Preferences · Audio" />
 </p>
 
 ### Auto language detection
@@ -136,7 +137,7 @@ Whisper reliably recognizes common speech but routinely mangles IT terminology i
 > **Tip.** If Whisper keeps mangling the same word or name — a project codename, a library you use daily, a colleague's surname — stop fighting the model. Open **Preferences → Terms**, put the correct spelling in *Canonical*, and add the two or three variants Whisper tends to produce. Next time the word shows up it'll come out right without any hand-editing. That's the whole point of this feature: if you have to fix the transcript by hand every time, it's not dictation — it's a slower way to type. Teach the app once, save the corrections forever.
 
 <p align="center">
-  <img src="docs/screenshots/preferences-terms.webp" width="560" alt="Preferences · Terms" />
+  <img src="docs/screenshots/preferences-terms.webp?v=4" width="560" alt="Preferences · Terms" />
 </p>
 
 **Default dictionaries.** The app ships with curated IT defaults for **Russian (~110 entries)**, **English (~120)**, and **Ukrainian (~130)** — all spanning the whole dev cycle: VCS (pull request, rebase, cherry-pick), languages (TypeScript, Swift, Rust), frontend (React, Tailwind, Next.js), UX (wireframe, mockup, accessibility), backend (endpoint, middleware, migration), data (Postgres, Redis, ClickHouse), DevOps (Docker, Kubernetes, Helm chart), cloud (AWS, S3, Lambda), and AI tooling (Claude, MCP, Opus). On first launch the bundled lists are copied into your Application Support directory — from then on the files are yours.
