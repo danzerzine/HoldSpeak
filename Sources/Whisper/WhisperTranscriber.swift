@@ -8,6 +8,7 @@ import FluidAudio
 final class WhisperTranscriber {
     private var kit: WhisperKit?
     private var parakeet: AsrManager?
+    private let vocabulary = ParakeetVocabulary()
     private var currentModelID: WhisperModelID?
     /// Most recent model asked for; a queued load that has been superseded is skipped.
     private var requestedModelID: WhisperModelID?
@@ -63,6 +64,7 @@ final class WhisperTranscriber {
             kit = nil
             parakeet = manager
             currentModelID = model
+            vocabulary.prepare()
             return
         }
         let config = WhisperKitConfig(modelFolder: url.path,
@@ -77,6 +79,27 @@ final class WhisperTranscriber {
         currentModelID = model
     }
 
+    /// Developer check (HOLDSPEAK_CHECK_FILES): each file through Parakeet with and
+    /// without term boosting, models loaded once. Files must be 16 kHz audio.
+    func checkFiles(_ paths: [String]) async {
+        await vocabulary.waitUntilLoaded()
+        for path in paths {
+            do {
+                let samples = try AudioConverter().resampleAudioFile(URL(fileURLWithPath: path))
+                let ms = samples.count / 16
+                for boost in [false, true, false, true] {
+                    let result = await transcribe(samples, durationMs: ms, boostTerms: boost)
+                    if case .text(let text, _, _) = result {
+                        // stdout, not the log: Release builds keep dictated text out of the log.
+                        print("\(URL(fileURLWithPath: path).lastPathComponent) boost=\(boost): \(text)")
+                    }
+                }
+            } catch {
+                pttLog("check: \(path): \(error)")
+            }
+        }
+    }
+
     /// Frees the model (~1.5 GB for turbo) when the user switches to Gemini.
     func unload() {
         requestedModelID = nil
@@ -85,8 +108,11 @@ final class WhisperTranscriber {
         currentModelID = nil
     }
 
-    func transcribe(_ trimmed: [Float], durationMs: Int) async -> TranscriptionResult {
-        if let parakeet { return await transcribeParakeet(parakeet, trimmed, durationMs: durationMs) }
+    /// `boostTerms: false` only for the file check, to time Parakeet without the booster.
+    func transcribe(_ trimmed: [Float], durationMs: Int, boostTerms: Bool = true) async -> TranscriptionResult {
+        if let parakeet {
+            return await transcribeParakeet(parakeet, trimmed, durationMs: durationMs, boostTerms: boostTerms)
+        }
         guard let kit else { pttLog("finalize: kit is nil"); return .failed(.whisperModelNotReady) }
         let isAuto = PreferencesStore.shared.primaryLanguage == .auto
         let preferred = Self.userPreferredLanguages()
@@ -107,12 +133,35 @@ final class WhisperTranscriber {
 
     /// Parakeet picks the language itself. No script hint: forcing Cyrillic for
     /// Russian would also turn English terms like "README" into Cyrillic.
-    private func transcribeParakeet(_ manager: AsrManager, _ samples: [Float], durationMs: Int) async -> TranscriptionResult {
+    private func transcribeParakeet(_ manager: AsrManager, _ samples: [Float], durationMs: Int,
+                                    boostTerms: Bool) async -> TranscriptionResult {
         do {
+            let padded = padShortSegment(samples)
+            let start = DispatchTime.now().uptimeNanoseconds
+            var booster: ParakeetVocabulary.Booster?
+            if boostTerms {
+                let language = PreferencesStore.shared.primaryLanguage.whisperCode
+                    ?? TerminologyStore.shared.activeLanguage
+                booster = await vocabulary.booster(for: TerminologyStore.shared.entries(for: language))
+            }
+            // The keyword model needs only the audio, so it runs while Parakeet decodes.
+            let spotTask = booster.map { b in Task { try await b.logProbs(padded) } }
             var state = TdtDecoderState.make()
-            let result = try await manager.transcribe(padShortSegment(samples), decoderState: &state)
-            let text = result.text.trimmingCharacters(in: .whitespaces)
-            pttLog("finalize: parakeet text=\(logText(text)) dur=\(durationMs)ms")
+            let result = try await manager.transcribe(padded, decoderState: &state)
+            let asrMs = (DispatchTime.now().uptimeNanoseconds - start) / 1_000_000
+            var text = result.text
+            var timing = "asr=\(asrMs)ms"
+            if let booster, let spotTask {
+                do {
+                    text = booster.apply(to: result, spot: try await spotTask.value)
+                } catch {
+                    pttLog("vocab error: \(error)")
+                }
+                let totalMs = (DispatchTime.now().uptimeNanoseconds - start) / 1_000_000
+                timing += " +vocab=\(totalMs - asrMs)ms"
+            }
+            text = text.trimmingCharacters(in: .whitespaces)
+            pttLog("finalize: parakeet text=\(logText(text)) dur=\(durationMs)ms \(timing)")
             if text.isEmpty { return .empty }
             return .text(text, language: nil, durationMs: durationMs)
         } catch {

@@ -26,6 +26,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Bumped per recording, so a slow transcription can't close a newer HUD.
     private var hudGeneration = 0
 
+    /// Developer check: HOLDSPEAK_CHECK_FILES=a.wav:b.wav transcribes the files with
+    /// Parakeet into HoldSpeak.log and quits; no menu bar item, hotkey or UI.
+    private func runFileCheck(_ paths: [String]) {
+        Task { @MainActor in
+            do {
+                try await engine.preload(model: .parakeetUltra)
+                await engine.checkFiles(paths)
+            } catch {
+                pttLog("check: model load failed: \(error)")
+            }
+            pttLog("check: done")
+            try? await Task.sleep(nanoseconds: 500_000_000)  // let the log queue flush
+            NSApp.terminate(nil)
+        }
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         PreferencesStore.shared.applyAppearance()
@@ -44,6 +60,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         recorder = AudioRecorder()
         engine = TranscriptionEngine()
         coordinator = TranscriptionCoordinator(engine: engine, store: store)
+        if let files = ProcessInfo.processInfo.environment["HOLDSPEAK_CHECK_FILES"] {
+            runFileCheck(files.split(separator: ":").map(String.init))
+            return
+        }
         modelsVM = ModelsViewModel()
         modelsVM.onDownloaded = { [weak self] id in
             let prefs = PreferencesStore.shared

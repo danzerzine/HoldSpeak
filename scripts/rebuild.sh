@@ -10,9 +10,11 @@ fi
 # Kill running instance
 pkill -x HoldSpeak 2>/dev/null || true
 
-# Build
+# Build. Debug keeps dictated text in HoldSpeak.log; -O makes FluidAudio's term
+# rescoring ~5x faster (≈60 ms instead of ≈290 ms per phrase).
 xcodebuild -scheme HoldSpeak -configuration Debug \
   -derivedDataPath build \
+  SWIFT_OPTIMIZATION_LEVEL=-O \
   clean build 2>&1 | tail -5
 
 APP_SRC="build/Build/Products/Debug/HoldSpeak.app"

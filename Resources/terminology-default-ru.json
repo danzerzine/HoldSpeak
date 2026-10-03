@@ -155,5 +155,11 @@
   { "id": "25000001-0000-0000-0000-000000000005", "canonical": "roadmap", "variants": ["роадмап", "роудмап", "роудмоп", "роудмэп", "роадмапе", "роудмапе", "роудмеп", "роадмеп"], "caseSensitive": false },
   { "id": "25000001-0000-0000-0000-000000000006", "canonical": "JSON", "variants": ["джейсон", "джейсоне", "джсон", "жсон"], "caseSensitive": false },
   { "id": "25000001-0000-0000-0000-000000000007", "canonical": "Whisper", "variants": ["виспер", "виспере", "виспера"], "caseSensitive": false },
-  { "id": "25000001-0000-0000-0000-000000000008", "canonical": "Parakeet", "variants": ["паракит", "паракита", "паракиту", "паракитом", "паракете"], "caseSensitive": false }
+  { "id": "25000001-0000-0000-0000-000000000008", "canonical": "Parakeet", "variants": ["паракит", "паракита", "паракиту", "паракитом", "паракете"], "caseSensitive": false },
+  { "id": "26000001-0000-0000-0000-000000000001", "canonical": "staging", "variants": ["стейджинг", "стейджин"], "caseSensitive": false },
+  { "id": "26000001-0000-0000-0000-000000000002", "canonical": "Zoom", "variants": ["зум"], "caseSensitive": false },
+  { "id": "26000001-0000-0000-0000-000000000003", "canonical": "Turbo", "variants": ["торбо"], "caseSensitive": false },
+  { "id": "26000001-0000-0000-0000-000000000004", "canonical": "Core ML", "variants": ["кор мл", "корэмл"], "caseSensitive": false },
+  { "id": "26000001-0000-0000-0000-000000000005", "canonical": "Neural Engine", "variants": ["нейрал энджин", "нюрал энджин"], "caseSensitive": false },
+  { "id": "26000001-0000-0000-0000-000000000006", "canonical": "config", "variants": ["конфиг", "конфига", "конфиге"], "caseSensitive": false }
 ]

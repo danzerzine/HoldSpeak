@@ -135,6 +135,8 @@ When two of your preferred languages score close in detection (e.g. a sentence m
 
 Whisper reliably recognizes common speech but routinely mangles IT terminology in mixed RU+EN dictation (`пулл реквест` instead of `pull request`, `кубернетес` instead of `Kubernetes`, and so on). The **Terms** tab lets you map your spoken variants to a single canonical form, which is then substituted in the transcript before it's inserted. Each Primary language keeps its own set of terms — in Auto mode the active set follows the detected language of the current utterance, so Russian-heavy speech uses your Russian dictionary and English-heavy speech uses the English one.
 
+With Parakeet the dictionary also works by sound. A small keyword model (parakeet-ctc-110m, ~98 MB, downloaded the first time Parakeet loads) listens for words that sound like a term with a Latin spelling and swaps that spelling in, so `пул реквист` and `Basicampi` come out as `pull request` and `Basecamp` even when that exact misspelling is not in your list. It adds about 60–80 ms per phrase. Whisper is not affected.
+
 > **Tip.** If Whisper keeps mangling the same word or name — a project codename, a library you use daily, a colleague's surname — stop fighting the model. Open **Preferences → Terms**, put the correct spelling in *Canonical*, and add the two or three variants Whisper tends to produce. Next time the word shows up it'll come out right without any hand-editing. That's the whole point of this feature: if you have to fix the transcript by hand every time, it's not dictation — it's a slower way to type. Teach the app once, save the corrections forever.
 
 <p align="center">

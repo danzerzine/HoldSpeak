@@ -22,6 +22,10 @@ public final class TranscriptionEngine {
         try await whisper.preload(model: model)
     }
 
+    public func checkFiles(_ paths: [String]) async {
+        await whisper.checkFiles(paths)
+    }
+
     public func unloadWhisper() {
         whisper.unload()
     }
