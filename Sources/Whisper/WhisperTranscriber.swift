@@ -105,17 +105,6 @@ final class WhisperTranscriber {
         }
     }
 
-    /// Only Parakeet is fast enough to re-run on the growing recording while the key is held.
-    var canTranscribeLive: Bool { parakeet != nil }
-
-    /// Running transcript of an unfinished recording; nil when unavailable or on error.
-    func partial(_ samples: [Float]) async -> String? {
-        guard let parakeet else { return nil }
-        var state = TdtDecoderState.make()
-        guard let result = try? await parakeet.transcribe(padShortSegment(samples), decoderState: &state) else { return nil }
-        return result.text.trimmingCharacters(in: .whitespaces)
-    }
-
     /// Parakeet picks the language itself. No script hint: forcing Cyrillic for
     /// Russian would also turn English terms like "README" into Cyrillic.
     private func transcribeParakeet(_ manager: AsrManager, _ samples: [Float], durationMs: Int) async -> TranscriptionResult {

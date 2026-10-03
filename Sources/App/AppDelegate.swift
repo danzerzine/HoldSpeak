@@ -10,8 +10,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var recorder: AudioRecorder!
     private var engine: TranscriptionEngine!
     private var coordinator: TranscriptionCoordinator!
-    /// Types the running transcript during the current hold, when that option is on.
-    private var liveTyper: LiveTyper?
     private var store: HistoryStore!
     private var metrics: MetricsEngine!
     private var overlay: OverlayWindow!
@@ -254,14 +252,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         pttLog("startRecording")
         hudGeneration += 1
         recorder.start(input: PreferencesStore.shared.inputSelection)
-        liveTyper = nil
-        // Skipped while the previous dictation is still being typed: the two would interleave.
-        if PreferencesStore.shared.liveTyping, engine.canTranscribeLive, !coordinator.isBusy {
-            let coordinator = coordinator!
-            let typer = LiveTyper(engine: engine, clean: { coordinator.cleanPartial($0) })
-            typer.start()
-            liveTyper = typer
-        }
         overlay.update(AnyView(hudView()))
         overlay.show(anchor: menu.statusItemFrame)
     }
@@ -271,10 +261,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         recorder.stop { [weak self] in
             _ = self?.engine.takeSamples() // discard the tap's audio
         }
-        if let typer = liveTyper {
-            liveTyper = nil
-            Task { await typer.stop(); _ = typer.finish("") }
-        }
         overlay.hide()
     }
 
@@ -282,15 +268,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         pttLog("endRecording")
         let generation = hudGeneration
         HUDAmplitudeModel.shared.setPhase(.processing)
-        let live = liveTyper
-        liveTyper = nil
         recorder.stop { [weak self] in
             guard let self else { return }
             // Take the samples now, synchronously: the next recording's chunks can
             // arrive on main as soon as this completion returns.
             let samples = self.engine.takeSamples()
             Task { @MainActor in
-                let outcome = await self.coordinator.finishRecording(samples: samples, live: live)
+                let outcome = await self.coordinator.finishRecording(samples: samples)
                 if case .inserted = outcome {
                     self.finishHUD(generation: generation, success: true)
                 } else {
