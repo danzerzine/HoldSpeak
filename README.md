@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/danzerzine/HoldSpeak/releases/latest"><b>Download for macOS</b></a>
+  <a href="https://github.com/danzerzine/Speak/releases/latest"><b>Download for macOS</b></a>
   &nbsp;·&nbsp; macOS 14 or later &nbsp;·&nbsp; Apple Silicon
 </p>
 
@@ -41,7 +41,7 @@ Speech is recognized by **NVIDIA Parakeet** on the Mac itself. On a 2020 MacBook
 
 ## Install
 
-1. Download the DMG from [Releases](https://github.com/danzerzine/HoldSpeak/releases/latest), open it and drag **Speak.app** into Applications.
+1. Download the DMG from [Releases](https://github.com/danzerzine/Speak/releases/latest), open it and drag **Speak.app** into Applications.
 2. The app is self-signed, so macOS blocks the first launch. Open **System Settings → Privacy & Security**, find *"Speak was blocked…"* and click **Open Anyway**.
 3. Follow the welcome window. Speak! needs three permissions:
    - **Microphone**, to hear you while you hold the key;

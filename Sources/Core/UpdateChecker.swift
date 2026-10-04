@@ -7,7 +7,7 @@ public struct ReleaseInfo {
 
 public final class UpdateChecker {
     public static let shared = UpdateChecker()
-    private let api = URL(string: "https://api.github.com/repos/danzerzine/HoldSpeak/releases/latest")!
+    private let api = URL(string: "https://api.github.com/repos/danzerzine/Speak/releases/latest")!
     private init() {}
 
     public func latest() async -> ReleaseInfo? {
