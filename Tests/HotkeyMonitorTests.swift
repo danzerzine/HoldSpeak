@@ -13,14 +13,67 @@ final class HotkeyMonitorTests: XCTestCase {
         return e
     }
 
+    private var reposted: [CGEvent] = []
+
+    private func makeMonitor() -> HotkeyMonitor {
+        let m = HotkeyMonitor()
+        m.repost = { [unowned self] in self.reposted.append($0) }
+        return m
+    }
+
+    private let rightOption = HotkeyBinding.rightOption
+
+    /// A flagsChanged event as Right Option produces it (device bit + general ⌥ bit).
+    private func flags(_ raw: UInt64) -> CGEvent {
+        let e = CGEvent(source: nil)!
+        e.type = .flagsChanged
+        e.flags = CGEventFlags(rawValue: raw)
+        return e
+    }
+
+    func test_modifierHold_cancelledByKeyPressDuringHold() {
+        let monitor = makeMonitor()
+        var events: [HotkeyMonitor.Event] = []
+        let sub = monitor.events.sink { events.append($0) }
+        defer { sub.cancel() }
+
+        _ = monitor.handle(event: flags(0x00080000 | 0x40), type: .flagsChanged, binding: rightOption)
+        XCTAssertEqual(events, [.startHold])
+        // ⌥+letter while held: a shortcut, not dictation.
+        XCTAssertFalse(monitor.handle(event: key(kVK_ANSI_A, down: true, flags: .maskAlternate),
+                                      type: .keyDown, binding: rightOption))
+        XCTAssertEqual(events, [.startHold, .cancelHold])
+        // Releasing afterwards sends nothing more.
+        _ = monitor.handle(event: flags(0), type: .flagsChanged, binding: rightOption)
+        XCTAssertEqual(events.count, 2)
+    }
+
+    func test_modifierHold_ignoredWhenCombinedWithAnotherModifier() {
+        let monitor = makeMonitor()
+        var events: [HotkeyMonitor.Event] = []
+        let sub = monitor.events.sink { events.append($0) }
+        defer { sub.cancel() }
+
+        _ = monitor.handle(event: flags(0x00080000 | 0x40 | 0x00100000 | 0x08), type: .flagsChanged,
+                           binding: rightOption)
+        XCTAssertTrue(events.isEmpty)
+    }
+
+    func test_keyTap_isRepostedToTheFocusedApp() {
+        let monitor = makeMonitor()
+        _ = monitor.handleKey(event: key(kVK_Space, down: true, flags: .maskAlternate), type: .keyDown, binding: optSpace)
+        _ = monitor.handleKey(event: key(kVK_Space, down: false, flags: .maskAlternate), type: .keyUp, binding: optSpace)
+        XCTAssertEqual(reposted.map { $0.type }, [.keyDown, .keyUp])
+    }
+
     func test_plainKeyUp_passesThroughWhenNoHoldActive() {
-        let monitor = HotkeyMonitor()
+        let monitor = makeMonitor()
         XCTAssertFalse(monitor.handleKey(event: key(kVK_Space, down: true), type: .keyDown, binding: optSpace))
         XCTAssertFalse(monitor.handleKey(event: key(kVK_Space, down: false), type: .keyUp, binding: optSpace))
     }
 
     func test_boundKeyUp_isConsumedAndEndsHold() {
-        let monitor = HotkeyMonitor()
+        let monitor = makeMonitor()
         var events: [HotkeyMonitor.Event] = []
         let sub = monitor.events.sink { events.append($0) }
         defer { sub.cancel() }
@@ -37,7 +90,7 @@ final class HotkeyMonitorTests: XCTestCase {
     }
 
     func test_secondBindingRelease_doesNotEndFirstBindingsHold() {
-        let monitor = HotkeyMonitor()
+        let monitor = makeMonitor()
         let f13 = HotkeyBinding.key(keyCode: UInt16(kVK_F13), mods: 0)
         var events: [HotkeyMonitor.Event] = []
         let sub = monitor.events.sink { events.append($0) }
@@ -53,7 +106,7 @@ final class HotkeyMonitorTests: XCTestCase {
     }
 
     func test_otherKeys_areIgnored() {
-        let monitor = HotkeyMonitor()
+        let monitor = makeMonitor()
         XCTAssertFalse(monitor.handleKey(event: key(kVK_ANSI_A, down: true, flags: .maskAlternate),
                                          type: .keyDown, binding: optSpace))
     }

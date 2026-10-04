@@ -29,7 +29,7 @@ final class ModelsViewModel: ObservableObject {
             }
             onDownloaded?(id)
         } catch {
-            NSLog("Model download failed: \(error)")
+            pttLog("Model download failed: \(error)")
         }
         refreshManagedSize()
     }
@@ -237,7 +237,7 @@ struct PreferencesView: View {
                             .monospacedDigit()
                             .fixedSize()
                     }
-                    Text("Short taps pass through. Holds longer start recording.")
+                    Text("Recording starts on press. Shorter presses are discarded.")
                         .font(.system(size: 11))
                         .foregroundColor(PTT.textSoft(scheme))
                 }

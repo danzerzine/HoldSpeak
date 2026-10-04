@@ -8,8 +8,8 @@ private let logMaxBytes: UInt64 = 2 * 1024 * 1024
 /// Opened lazily on logQueue; nil until the first write (or after a failed open).
 private var logHandle: FileHandle?
 
+/// Writes to HoldSpeak.log only, not the system log, which keeps entries far longer.
 public func pttLog(_ msg: String) {
-    NSLog("[PTT] \(msg)")
     let line = "\(Date()) \(msg)\n"
     logQueue.async {
         guard let data = line.data(using: .utf8), let fh = openLogHandle() else { return }

@@ -9,17 +9,27 @@ struct HotkeyRecorderView: View {
     @State private var recording = false
     @State private var monitor: Any?
     @State private var previousDeviceBits: UInt64 = 0
+    @State private var rejected = false
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        HStack(spacing: 8) {
-            Text(recording ? "Press a key…" : binding.label)
-                .frame(minWidth: 160, alignment: .center)
-                .padding(.vertical, 4).padding(.horizontal, 10)
-                .pttSurface(glass: Capsule(), fallback: RoundedRectangle(cornerRadius: 6),
-                            fill: Color.secondary.opacity(recording ? 0.2 : 0.1),
-                            border: recording ? Color.accentColor.opacity(0.8) : nil,
-                            tint: recording ? Color.accentColor.opacity(0.3) : nil)
-            Button(recording ? "Cancel" : "Change") { toggle() }
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                Text(recording ? "Press a key…" : binding.label)
+                    .frame(minWidth: 160, alignment: .center)
+                    .padding(.vertical, 4).padding(.horizontal, 10)
+                    .pttSurface(glass: Capsule(), fallback: RoundedRectangle(cornerRadius: 6),
+                                fill: Color.secondary.opacity(recording ? 0.2 : 0.1),
+                                border: recording ? Color.accentColor.opacity(0.8) : nil,
+                                tint: recording ? Color.accentColor.opacity(0.3) : nil)
+                Button(recording ? "Cancel" : "Change") { toggle() }
+            }
+            if rejected {
+                // A bare letter would stop typing system-wide.
+                Text("Add ⌃, ⌥ or ⌘ to that key, or use an F-key or a single modifier.")
+                    .font(.system(size: 11))
+                    .foregroundColor(PTT.textSoft(scheme))
+            }
         }
         .onDisappear { stop() }
     }
@@ -35,6 +45,7 @@ struct HotkeyRecorderView: View {
 
     private func start() {
         recording = true
+        rejected = false
         HotkeyMonitor.isPaused = true
         previousDeviceBits = UInt64(NSEvent.modifierFlags.rawValue) & 0xFFFF
         monitor = NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged, .keyDown]) { event in
@@ -55,6 +66,12 @@ struct HotkeyRecorderView: View {
         HotkeyMonitor.isPaused = false
     }
 
+    private static func isFunctionKey(_ kc: UInt16) -> Bool {
+        [kVK_F1, kVK_F2, kVK_F3, kVK_F4, kVK_F5, kVK_F6, kVK_F7, kVK_F8, kVK_F9, kVK_F10,
+         kVK_F11, kVK_F12, kVK_F13, kVK_F14, kVK_F15, kVK_F16, kVK_F17, kVK_F18, kVK_F19, kVK_F20]
+            .contains(Int(kc))
+    }
+
     private func bindingFrom(_ event: NSEvent) -> HotkeyBinding? {
         guard let cg = event.cgEvent else { return nil }
         let flags = cg.flags.rawValue
@@ -65,6 +82,12 @@ struct HotkeyRecorderView: View {
                 return nil
             }
             let mods = flags & HotkeyBinding.allGeneralMods
+            // Shift alone doesn't count: ⇧A still types a letter.
+            guard mods & ~0x00020000 != 0 || Self.isFunctionKey(event.keyCode) else {
+                rejected = true
+                return nil
+            }
+            rejected = false
             return .key(keyCode: event.keyCode, mods: mods)
         } else {
             let current = flags & 0xFFFF

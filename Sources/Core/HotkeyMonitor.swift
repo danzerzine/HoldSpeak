@@ -14,6 +14,13 @@ public final class HotkeyMonitor {
     private var holdStartedAt: Date?
     /// The binding whose press started the current hold; only its release ends it.
     private var holdBinding: HotkeyBinding?
+    /// Copy of the keyDown a `.key` hold swallowed; re-posted if the press turns out to be a tap.
+    private var swallowedKeyDown: CGEvent?
+
+    /// Marks events this monitor re-posts so the tap lets them through.
+    private static let repostMarker: Int64 = 0x48534B /* "HSK" */
+    /// Tests swap this out so they never type into the real session.
+    var repost: (CGEvent) -> Void = { $0.post(tap: .cgSessionEventTap) }
 
     /// Set while Preferences is capturing a new binding: events pass through
     /// untouched so pressing the current hotkey doesn't start a dictation and
@@ -54,7 +61,7 @@ public final class HotkeyMonitor {
             userInfo: selfPtr
         )
         guard let tap else {
-            NSLog("HotkeyMonitor: failed to create event tap (missing Accessibility permission?)")
+            pttLog("HotkeyMonitor: failed to create event tap (missing Accessibility permission?)")
             return
         }
         self.eventTap = tap
@@ -70,19 +77,15 @@ public final class HotkeyMonitor {
         }
         eventTap = nil
         runLoopSource = nil
-        holdStartedAt = nil
-        holdBinding = nil
+        resetHold()
     }
 
     /// Returns true if the event should be consumed (dropped).
     private func handle(event: CGEvent, type: CGEventType) -> Bool {
+        if event.getIntegerValueField(.eventSourceUserData) == Self.repostMarker { return false }
         if Self.isPaused {
             // A hold in progress when capture began would never see its release.
-            if holdStartedAt != nil {
-                holdStartedAt = nil
-                holdBinding = nil
-                events.send(.cancelHold)
-            }
+            cancelHold()
             return false
         }
         if let active = holdBinding { return handle(event: event, type: type, binding: active) }
@@ -93,10 +96,15 @@ public final class HotkeyMonitor {
         return false
     }
 
-    private func handle(event: CGEvent, type: CGEventType, binding: HotkeyBinding) -> Bool {
+    func handle(event: CGEvent, type: CGEventType, binding: HotkeyBinding) -> Bool {
         switch binding.kind {
         case .modifier:
-            if type == .flagsChanged { handleModifier(event: event, binding: binding) }
+            if type == .flagsChanged {
+                handleModifier(event: event, binding: binding)
+            } else if type == .keyDown && holdBinding == binding {
+                // ⌥+letter, ⌘C and the like: the modifier is part of a shortcut, not a dictation.
+                cancelHold()
+            }
             return false
         case .key:
             return handleKey(event: event, type: type, binding: binding)
@@ -124,13 +132,23 @@ public final class HotkeyMonitor {
         let currentMods = flags & HotkeyBinding.allGeneralMods
         if type == .keyDown {
             guard currentMods == binding.mods else { return false }
-            if holdStartedAt == nil { beginHold(binding) }
+            if holdStartedAt == nil {
+                beginHold(binding)
+                swallowedKeyDown = event.copy()
+            }
             return true
         } else {
             // Only swallow the keyUp that ends our hold — e.g. with ⌥Space bound, a
             // plain Space keyUp must still reach the focused app.
             guard holdBinding == binding else { return false }
-            endOrCancel()
+            let keyDown = swallowedKeyDown
+            if !endOrCancel(), let keyDown, let keyUp = event.copy() {
+                // A tap: give the focused app the keystroke it would have got without us.
+                for e in [keyDown, keyUp] {
+                    e.setIntegerValueField(.eventSourceUserData, value: Self.repostMarker)
+                    repost(e)
+                }
+            }
             return true
         }
     }
@@ -141,11 +159,26 @@ public final class HotkeyMonitor {
         events.send(.startHold)
     }
 
-    private func endOrCancel() {
-        guard let startedAt = holdStartedAt else { return }
+    /// Returns true if the hold was long enough to count as a dictation.
+    @discardableResult
+    private func endOrCancel() -> Bool {
+        guard let startedAt = holdStartedAt else { return false }
+        resetHold()
+        let heldMs = Date().timeIntervalSince(startedAt) * 1000.0
+        let long = heldMs >= Double(prefs.holdThresholdMs)
+        events.send(long ? .endHold : .cancelHold)
+        return long
+    }
+
+    private func cancelHold() {
+        guard holdStartedAt != nil else { return }
+        resetHold()
+        events.send(.cancelHold)
+    }
+
+    private func resetHold() {
         holdStartedAt = nil
         holdBinding = nil
-        let heldMs = Date().timeIntervalSince(startedAt) * 1000.0
-        events.send(heldMs >= Double(prefs.holdThresholdMs) ? .endHold : .cancelHold)
+        swallowedKeyDown = nil
     }
 }

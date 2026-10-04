@@ -10,14 +10,16 @@ fi
 # Kill running instance
 pkill -x HoldSpeak 2>/dev/null || true
 
-# Build. Debug keeps dictated text in HoldSpeak.log; -O makes FluidAudio's term
-# rescoring ~5x faster (≈60 ms instead of ≈290 ms per phrase).
-xcodebuild -scheme HoldSpeak -configuration Debug \
+# Build. Release keeps dictated text out of HoldSpeak.log (only its length is
+# logged); CONFIG=Debug ./scripts/rebuild.sh logs the text for debugging. -O makes
+# FluidAudio's term rescoring ~5x faster (≈60 ms instead of ≈290 ms per phrase).
+CONFIG="${CONFIG:-Release}"
+xcodebuild -scheme HoldSpeak -configuration "$CONFIG" \
   -derivedDataPath build \
   SWIFT_OPTIMIZATION_LEVEL=-O \
   clean build 2>&1 | tail -5
 
-APP_SRC="build/Build/Products/Debug/HoldSpeak.app"
+APP_SRC="build/Build/Products/$CONFIG/HoldSpeak.app"
 APP_DST="/Applications/HoldSpeak.app"
 
 rm -rf "$APP_DST"
