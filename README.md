@@ -4,7 +4,7 @@
 
 # HoldSpeak
 
-**Website: [holdspeak.app](https://holdspeak.app/)** · [Download](https://github.com/timmal/HoldSpeak/releases/latest) · [Free Superwhisper alternative — comparison](https://holdspeak.app/superwhisper-alternative.html)
+A fork of [timmal/HoldSpeak](https://github.com/timmal/HoldSpeak) with a Parakeet engine, a correction dictionary you can fill from any app, and other changes. [Download](https://github.com/danzerzine/HoldSpeak/releases/latest)
 
 Local push-to-talk dictation for macOS. HoldSpeak is a **menu bar app** (no Dock icon, no windows in the way) — it lives in the status bar and stays out of your workflow until you hold the hotkey. Speak, release — recognized text is inserted into the focused input. Local by default: Whisper runs on GPU via WhisperKit. Optionally, you can switch to Google Gemini with your own API key.
 
@@ -28,7 +28,7 @@ A free, local alternative to paid Whisper wrappers. Built for one reason: talkin
 
 ## Install
 
-Grab the latest DMG from the [Releases page](https://github.com/timmal/HoldSpeak/releases/latest), open it, and drag `HoldSpeak.app` into `Applications`.
+Grab the latest DMG from the [Releases page](https://github.com/danzerzine/HoldSpeak/releases/latest), open it, and drag `HoldSpeak.app` into `Applications`.
 
 Because the app is self-signed, macOS will block the first launch. Open **System Settings → Privacy & Security**, scroll to the message *"HoldSpeak was blocked…"* and click **Open Anyway**. Confirm with Touch ID / password. After that it launches normally from Launchpad / Applications. The app runs as a menu bar extra — look for the radio icon in the right side of your menu bar; it won't appear in the Dock or Cmd-Tab.
 
