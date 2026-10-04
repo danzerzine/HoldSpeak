@@ -1,0 +1,85 @@
+# Builds, signs and publishes a Speak! release from GitHub instead of a Mac:
+# Actions → Release → Run workflow, with the version and the "what's new" lines.
+# Runs scripts/release.sh, so a local release and this one produce the same thing.
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version, e.g. 0.3.5"
+        required: true
+      notes:
+        description: "What's new: plain lines for people, separated by |"
+        required: true
+      dry_run:
+        description: "Build and sign only, publish nothing"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency: release
+
+jobs:
+  release:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Tools
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.6.app
+          brew install xcodegen
+
+      # The self-signed identity the installed apps were signed with: a different one
+      # would make macOS ask for microphone and Accessibility again after the update.
+      - name: Signing identity
+        env:
+          P12: ${{ secrets.SIGNING_P12 }}
+          P12_PASSWORD: ${{ secrets.SIGNING_P12_PASSWORD }}
+        run: |
+          KC="$RUNNER_TEMP/signing.keychain-db"
+          KC_PASSWORD="$(uuidgen)"
+          security create-keychain -p "$KC_PASSWORD" "$KC"
+          security set-keychain-settings -lut 3600 "$KC"
+          security unlock-keychain -p "$KC_PASSWORD" "$KC"
+          echo "$P12" | base64 --decode > "$RUNNER_TEMP/signing.p12"
+          security import "$RUNNER_TEMP/signing.p12" -k "$KC" -P "$P12_PASSWORD" -T /usr/bin/codesign
+          rm -f "$RUNNER_TEMP/signing.p12"
+          # Self-signed: trust it for code signing, or codesign rejects the identity.
+          security find-certificate -c "HoldSpeak Dev (self-signed)" -p "$KC" > "$RUNNER_TEMP/cert.pem"
+          sudo security add-trusted-cert -d -r trustRoot -p codeSign -k /Library/Keychains/System.keychain "$RUNNER_TEMP/cert.pem"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KC_PASSWORD" "$KC" >/dev/null
+          security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
+          security find-identity -v -p codesigning
+
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SPARKLE_KEY: ${{ secrets.SPARKLE_ED_KEY }}
+          VERSION: ${{ inputs.version }}
+          NOTES: ${{ inputs.notes }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+        run: |
+          git config user.name "danzerzine"
+          git config user.email "45887182+danzerzine@users.noreply.github.com"
+          printf '%s\n' "$NOTES" | tr '|' '\n' > "$RUNNER_TEMP/notes.txt"
+          printf '%s' "$SPARKLE_KEY" > "$RUNNER_TEMP/sparkle.key"
+          NOTES_FILE="$RUNNER_TEMP/notes.txt" SPARKLE_KEY_FILE="$RUNNER_TEMP/sparkle.key" \
+            RELEASE_YES=1 ./scripts/release.sh "$VERSION"
+          rm -f "$RUNNER_TEMP/sparkle.key"
+
+      - name: Keep the build of a dry run
+        if: inputs.dry_run
+        uses: actions/upload-artifact@v4
+        with:
+          name: dry-run
+          path: |
+            dist/Speak-*.dmg
+            docs/appcast.xml
+          retention-days: 3

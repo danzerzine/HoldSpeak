@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Build a signed .app, package as DMG, create a GitHub release.
+# Usually run on GitHub: Actions → Release → Run workflow (.github/workflows/release.yml).
 # Usage: ./scripts/release.sh 0.2.0
 #   NOTES_FILE=notes.txt ./scripts/release.sh 0.2.0   (skip the editor)
 set -euo pipefail
@@ -86,8 +87,12 @@ sign_app() {
 }
 
 IDENTITY="HoldSpeak Dev (self-signed)"
-if security find-identity -v -p codesigning login.keychain-db 2>/dev/null | grep -q "$IDENTITY"; then
+if security find-identity -v -p codesigning 2>/dev/null | grep -q "$IDENTITY"; then
   sign_app "$IDENTITY" "dist/Speak.app"
+elif [[ -n "${CI:-}" ]]; then
+  # An ad-hoc build would make every user grant microphone and Accessibility again.
+  echo "Signing identity \"$IDENTITY\" not found; stopped."
+  exit 1
 else
   sign_app - "dist/Speak.app"
 fi
@@ -110,7 +115,12 @@ rm -rf "$STAGING"
 # (generate_keys --account danzerzine-speak) and list it in docs/appcast.xml,
 # which GitHub Pages serves to the app, with the notes asked for above.
 SIGN_UPDATE="build/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update"
-SIGNED="$("$SIGN_UPDATE" --account danzerzine-speak "$DMG")"
+# SPARKLE_KEY_FILE: the same key exported to a file (the GitHub workflow uses it).
+if [[ -n "${SPARKLE_KEY_FILE:-}" ]]; then
+  SIGNED="$("$SIGN_UPDATE" --ed-key-file "$SPARKLE_KEY_FILE" "$DMG")"
+else
+  SIGNED="$("$SIGN_UPDATE" --account danzerzine-speak "$DMG")"
+fi
 python3 scripts/appcast-add.py "$VERSION" "$BUILD_NUMBER" \
   "https://github.com/danzerzine/Speak/releases/download/$TAG/Speak-$VERSION.dmg" \
   "$SIGNED" "$NOTES"
@@ -123,7 +133,11 @@ git tag -a "$TAG" -m "Release $TAG"
 echo
 echo "DMG built: $DMG"
 echo "Pushing publishes main ($AHEAD earlier unpushed commits + the version bump), tag $TAG and a GitHub release."
-read -r -p "Push and publish? [y/N] " ANSWER
+if [[ -n "${DRY_RUN:-}" ]]; then
+  echo "Dry run: built and signed, nothing published."
+  exit 0
+fi
+if [[ -n "${RELEASE_YES:-}" ]]; then ANSWER=y; else read -r -p "Push and publish? [y/N] " ANSWER; fi
 if [[ "$ANSWER" != "y" && "$ANSWER" != "Y" ]]; then
   echo "Stopped before push. The commit and tag stay local; undo with: git tag -d $TAG && git reset --hard HEAD~1"
   exit 0
