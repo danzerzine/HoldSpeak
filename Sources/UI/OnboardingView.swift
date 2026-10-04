@@ -1,175 +1,327 @@
 import SwiftUI
 
+/// First launch in four short steps (concept section "Первый запуск"): what the app
+/// does, where to recognise speech, permissions (checked on their own while the
+/// model downloads), and a first dictation to see it work.
 struct OnboardingView: View {
     @ObservedObject var modelsVM: ModelsViewModel
     @ObservedObject private var prefs = PreferencesStore.shared
-    @State private var perms = PermissionsManager.shared.current()
+    @ObservedObject private var status = AppStatus.shared
     @State private var step: Step
-    @State private var choice: TranscriptionEngineKind = .whisper
+    @State private var choice: TranscriptionEngineKind
+    @State private var tryText = ""
+    @FocusState private var tryFocused: Bool
+    @State private var holding = false
+
     /// Called when the user confirms an engine (a Gemini key is already saved by then).
     var onEngineChosen: (TranscriptionEngineKind) -> Void
+    var onTryPress: () -> Void
+    var onTryRelease: () -> Void
     var onDone: () -> Void
 
-    private enum Step { case engine, permissions }
+    enum Step: Int, CaseIterable { case welcome, engine, permissions, tryIt }
 
     init(modelsVM: ModelsViewModel,
          needsEngine: Bool,
+         initialStep: Step? = nil,
          onEngineChosen: @escaping (TranscriptionEngineKind) -> Void,
+         onTryPress: @escaping () -> Void,
+         onTryRelease: @escaping () -> Void,
          onDone: @escaping () -> Void) {
         self.modelsVM = modelsVM
         self.onEngineChosen = onEngineChosen
+        self.onTryPress = onTryPress
+        self.onTryRelease = onTryRelease
         self.onDone = onDone
-        _step = State(initialValue: needsEngine ? .engine : .permissions)
+        // After a reinstall or rename only the permissions are missing: start there.
+        _step = State(initialValue: initialStep ?? (needsEngine ? .welcome : .permissions))
+        _choice = State(initialValue: needsEngine ? .whisper : PreferencesStore.shared.engine)
     }
 
     var body: some View {
-        Group {
-            switch step {
-            case .engine:      engineStep
-            case .permissions: permissionsStep
+        VStack(spacing: 0) {
+            Group {
+                switch step {
+                case .welcome:     welcome
+                case .engine:      engine
+                case .permissions: permissions
+                case .tryIt:       tryIt
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .padding(.horizontal, 56)
+            .padding(.top, 54)
+            .transition(.opacity)
+            footer
         }
-        .padding(20)
-        .frame(width: 480, height: 440)
+        .frame(width: 600, height: 470)
+        .preferredColorScheme(prefs.appTheme.colorScheme)
+        .animation(DS.reduceMotion ? nil : .easeInOut(duration: 0.2), value: step)
     }
 
-    // MARK: - Engine
+    // MARK: Steps
 
-    private var engineStep: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("How should Speak! recognize speech?")
-                .font(.title2).bold()
-            engineCard(.whisper,
-                       title: "On this Mac — \(prefs.modelID.isParakeet ? "Parakeet" : "Whisper")",
-                       detail: "Free and private, works offline. Downloads \(prefs.modelID.shortLabel) now.")
-            engineCard(.gemini,
-                       title: "Gemini — Google cloud",
-                       detail: "Usually more accurate with mixed languages and jargon. Needs your own Google AI Studio API key with billing.")
+    private var welcome: some View {
+        VStack(spacing: 0) {
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .frame(width: 96, height: 96)
+                .accessibilityHidden(true)
+            heading("Hold to talk. Release to type.",
+                    "Hold a key, say what you want, let go. Speak! types it into whatever app you’re in — a terminal, a chat, a pull request.")
+            HStack(spacing: DS.s2) {
+                Circle().fill(DS.tally).frame(width: 7, height: 7)
+                Text("Listening").fontWeight(.semibold)
+                Text("0:03").foregroundStyle(.secondary).monospacedDigit()
+            }
+            .font(.system(size: 12))
+            .padding(.horizontal, DS.s3)
+            .frame(height: 30)
+            .dsGlass(Capsule(), classic: Capsule())
+            .padding(.top, DS.s3)
+            .accessibilityHidden(true)
+        }
+    }
+
+    private var engine: some View {
+        VStack(spacing: 0) {
+            heading("Where should speech be recognized?",
+                    "You can change this later in Settings → Recognition.")
+            HStack(alignment: .top, spacing: DS.s3) {
+                EngineCard(symbol: "laptopcomputer", title: "On this Mac",
+                           detail: "Parakeet Ultra. Free, private, works offline. Downloads 610 MB.",
+                           selected: choice == .whisper) { choice = .whisper }
+                EngineCard(symbol: "cloud", title: "Gemini",
+                           detail: "Google cloud. Better with mixed languages. Needs your API key with billing.",
+                           selected: choice == .gemini) { choice = .gemini }
+            }
+            .padding(.top, 22)
             if choice == .gemini {
-                GeminiKeyEditor(width: 420)
-                    .padding(.leading, 4)
+                GeminiKeyField().padding(.top, DS.s3)
             }
-            Picker("I mostly dictate in", selection: $prefs.primaryLanguage) {
-                ForEach(PrimaryLanguage.allCases) { Text($0.label).tag($0) }
-            }
-            .frame(width: 320)
-            Text("You can switch later in Preferences → Audio.")
-                .font(.caption)
-                .foregroundColor(.secondary)
-            Spacer(minLength: 0)
-            HStack {
-                Spacer()
-                Button("Continue") {
-                    onEngineChosen(choice)
-                    perms = PermissionsManager.shared.current()
-                    if perms.allGranted { onDone() } else { step = .permissions }
+            Form {
+                Picker("I mostly speak", selection: $prefs.primaryLanguage) {
+                    ForEach(PrimaryLanguage.allCases) { Text($0.label).tag($0) }
                 }
-                .disabled(choice == .gemini && !prefs.hasGeminiKey)
-                .keyboardShortcut(.defaultAction)
-                .modifier(PrimaryOnGlass())
             }
+            .formStyle(.grouped)
+            .scrollDisabled(true)
+            .frame(height: 64)
+            .padding(.horizontal, -20)
+            .padding(.top, 2)
         }
     }
 
-    private func engineCard(_ kind: TranscriptionEngineKind, title: String, detail: String) -> some View {
-        let selected = choice == kind
-        return Button { choice = kind } label: {
-            HStack(alignment: .top, spacing: 10) {
-                Image(systemName: selected ? "largecircle.fill.circle" : "circle")
-                    .foregroundColor(selected ? .accentColor : .secondary)
-                    .font(.system(size: 14))
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(title).font(.system(size: 13, weight: .semibold))
-                    Text(detail)
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+    private var permissions: some View {
+        VStack(spacing: 0) {
+            heading("Allow Speak! to listen and type",
+                    "macOS asks once for each. Speak! notices the change on its own.")
+            Form {
+                permissionRow("Microphone", "To hear you while you hold the key",
+                              granted: status.permissions.microphone, button: "Allow…") {
+                    Task {
+                        if await !PermissionsManager.shared.requestMicrophone() {
+                            PermissionsManager.shared.openMicrophoneSettings()
+                        }
+                        status.refreshPermissions()
+                    }
                 }
-                Spacer(minLength: 0)
-            }
-            .padding(12)
-            .contentShape(Rectangle())
-            .pttSurface(glass: RoundedRectangle(cornerRadius: 16),
-                        fallback: RoundedRectangle(cornerRadius: 8),
-                        fill: Color.secondary.opacity(selected ? 0.12 : 0.05),
-                        border: selected ? Color.accentColor : .clear,
-                        tint: selected ? Color.accentColor.opacity(0.35) : nil,
-                        interactive: true)
-        }
-        .buttonStyle(.plain)
-    }
-
-    // MARK: - Permissions
-
-    private var permissionsStep: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Speak! needs a few permissions")
-                .font(.title2).bold()
-            row("Microphone", ok: perms.microphone) {
-                Task {
-                    _ = await PermissionsManager.shared.requestMicrophone()
-                    refresh()
+                permissionRow("Accessibility", "To type the text into the app you’re using",
+                              granted: status.permissions.accessibility, button: "Open Settings…") {
+                    PermissionsManager.shared.openAccessibilitySettings()
+                }
+                permissionRow("Input Monitoring", "To notice when you hold \(EngineText.hotkey(prefs))",
+                              granted: status.permissions.inputMonitoring, button: "Open Settings…") {
+                    PermissionsManager.shared.openInputMonitoringSettings()
+                    status.refreshPermissions()
                 }
             }
-            row("Accessibility (global hotkey and text insertion)", ok: perms.accessibility) {
-                PermissionsManager.shared.openAccessibilitySettings()
-            }
-            row("Input Monitoring", ok: perms.inputMonitoring) {
-                PermissionsManager.shared.openInputMonitoringSettings()
-            }
-            Spacer(minLength: 0)
+            .formStyle(.grouped)
+            .scrollDisabled(true)
+            .frame(height: 190)
+            .padding(.horizontal, -20)
+            .padding(.top, 8)
             if modelsVM.downloading {
                 HStack(spacing: 10) {
-                    Text("Downloading \(prefs.modelID.shortLabel)…")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    Text("Downloading \(EngineText.modelName(prefs)) — \(Int(modelsVM.progress * 100))%")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
                     ProgressView(value: modelsVM.progress)
                 }
-            }
-            HStack {
-                Button("Re-check") { refresh() }
-                Spacer()
-                Button("Done") { onDone() }
-                    .disabled(!perms.allGranted)
-                    .keyboardShortcut(.defaultAction)
-                    .modifier(PrimaryOnGlass())
+                .padding(.top, DS.s1)
             }
         }
+        .onAppear { status.refreshPermissions() }
     }
 
-    private func row(_ title: String, ok: Bool, optional: Bool = false, action: @escaping () -> Void) -> some View {
-        HStack {
-            Image(systemName: ok ? "checkmark.circle.fill" : "circle")
-                .foregroundColor(ok ? .green : .secondary)
+    private var tryIt: some View {
+        VStack(spacing: 0) {
+            Text("Try it").font(DS.title).padding(.top, 14)
+            HStack(spacing: 4) {
+                Text("Click the field, hold")
+                KeyCap(EngineText.hotkey(prefs))
+                Text("and say a sentence. Release to see it typed.")
+            }
+            .font(DS.body)
+            .foregroundStyle(.secondary)
+            .padding(.top, DS.s2)
+
+            TextField("Your words will appear here", text: $tryText, axis: .vertical)
+                .textFieldStyle(.plain)
+                .lineLimit(4, reservesSpace: true)
+                .focused($tryFocused)
+                .padding(.horizontal, 11)
+                .padding(.vertical, 9)
+                .background(RoundedRectangle(cornerRadius: 10).fill(Color(nsColor: .textBackgroundColor)))
+                .overlay(RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(tryFocused ? Color.accentColor : Color.primary.opacity(0.14),
+                                  lineWidth: tryFocused ? 2 : 1))
+                .padding(.top, 22)
+
+            HStack(spacing: 14) {
+                Text(holding ? "Listening… release to type" : "Hold to try")
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 4)
+                    .background(RoundedRectangle(cornerRadius: 6)
+                        .fill(holding ? DS.tally : Color(nsColor: .controlBackgroundColor)))
+                    .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Color.primary.opacity(0.14), lineWidth: 0.5))
+                    .foregroundStyle(holding ? Color.white : Color.primary)
+                    .gesture(DragGesture(minimumDistance: 0)
+                        .onChanged { _ in
+                            guard !holding else { return }
+                            holding = true
+                            tryFocused = true
+                            onTryPress()
+                        }
+                        .onEnded { _ in
+                            holding = false
+                            onTryRelease()
+                        })
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityLabel("Hold to try")
+                Button("Skip", action: onDone).buttonStyle(.link)
+            }
+            .padding(.top, DS.s3)
+        }
+        .onAppear { DispatchQueue.main.async { tryFocused = true } }
+    }
+
+    private func heading(_ title: String, _ text: String) -> some View {
+        VStack(spacing: DS.s2) {
             Text(title)
-            if optional {
-                Text("Optional")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 6).padding(.vertical, 2)
-                    .background(Color.secondary.opacity(0.15))
-                    .clipShape(Capsule())
-            }
-            Spacer()
-            Button("Open…", action: action)
-                .opacity(ok ? 0 : 1)
-                .disabled(ok)
+                .font(DS.title)
+                .multilineTextAlignment(.center)
+            Text(text)
+                .font(DS.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 380)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(height: 28)
+        .padding(.top, 14)
     }
 
-    private func refresh() {
-        perms = PermissionsManager.shared.current()
+    private func permissionRow(_ title: String, _ caption: String, granted: Bool, button: String,
+                               action: @escaping () -> Void) -> some View {
+        LabeledContent {
+            if granted {
+                Label("Allowed", systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(DS.ok)
+                    .font(.system(size: 12.5))
+            } else {
+                Button(button, action: action).dsProminent().controlSize(.small)
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title).fontWeight(.medium)
+                Text(caption).font(DS.callout).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    // MARK: Footer
+
+    private var footer: some View {
+        HStack {
+            Button("Back") { if let prev = Step(rawValue: step.rawValue - 1) { step = prev } }
+                .opacity(step == .welcome ? 0 : 1)
+                .disabled(step == .welcome)
+            Spacer()
+            HStack(spacing: 6) {
+                ForEach(Step.allCases, id: \.self) { s in
+                    Circle()
+                        .fill(s == step ? Color.primary : Color.primary.opacity(0.3))
+                        .frame(width: 6, height: 6)
+                }
+            }
+            .accessibilityElement()
+            .accessibilityLabel("Step \(step.rawValue + 1) of \(Step.allCases.count)")
+            Spacer()
+            Button(step == .tryIt ? "Done" : "Continue", action: next)
+                .keyboardShortcut(.defaultAction)
+                .dsProminent()
+                .disabled(!canContinue)
+        }
+        .padding(.horizontal, DS.s5)
+        .padding(.vertical, DS.s4)
+    }
+
+    private var canContinue: Bool {
+        switch step {
+        case .welcome:     return true
+        case .engine:      return choice == .whisper || prefs.hasGeminiKey
+        case .permissions: return status.permissions.microphone && status.permissions.accessibility
+        case .tryIt:       return true
+        }
+    }
+
+    private func next() {
+        switch step {
+        case .welcome:
+            step = .engine
+        case .engine:
+            onEngineChosen(choice)
+            step = .permissions
+        case .permissions:
+            step = .tryIt
+        case .tryIt:
+            onDone()
+        }
     }
 }
 
-/// The default button is already blue below macOS 26; there it becomes prominent glass.
-private struct PrimaryOnGlass: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(macOS 26, *) {
-            content.buttonStyle(.glassProminent)
-        } else {
-            content
+/// One engine choice (concept `.card`).
+private struct EngineCard: View {
+    let symbol: String
+    let title: String
+    let detail: String
+    let selected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: DS.s1) {
+                Image(systemName: symbol)
+                    .font(.system(size: 20))
+                    .foregroundStyle(Color.accentColor)
+                    .frame(height: 22)
+                    .padding(.bottom, DS.s1)
+                Text(title).font(.system(size: 13, weight: .semibold))
+                Text(detail)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .padding(14)
+            .background(RoundedRectangle(cornerRadius: DS.cardRadius)
+                .fill(selected ? Color.accentColor.opacity(0.08) : Color.primary.opacity(0.035)))
+            .overlay(RoundedRectangle(cornerRadius: DS.cardRadius)
+                .strokeBorder(selected ? Color.accentColor : Color.primary.opacity(0.06), lineWidth: selected ? 2 : 1))
+            .contentShape(RoundedRectangle(cornerRadius: DS.cardRadius))
         }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? [.isSelected] : [])
     }
 }

@@ -10,6 +10,8 @@ public final class HotkeyMonitor {
     public let events = PassthroughSubject<Event, Never>()
 
     private var eventTap: CFMachPort?
+    private var retryScheduled = false
+    private var tapFailed = false
     private var runLoopSource: CFRunLoopSource?
     private var holdStartedAt: Date?
     /// The binding whose press started the current hold; only its release ends it.
@@ -61,9 +63,22 @@ public final class HotkeyMonitor {
             userInfo: selfPtr
         )
         guard let tap else {
-            pttLog("HotkeyMonitor: failed to create event tap (missing Accessibility permission?)")
+            // Without Accessibility the tap can't be created. Keep trying, so the
+            // hotkey works as soon as the permission is granted, without a relaunch.
+            if !tapFailed {
+                pttLog("HotkeyMonitor: failed to create event tap (missing Accessibility permission?) — retrying every 2 s")
+            }
+            tapFailed = true
+            guard !retryScheduled else { return }
+            retryScheduled = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+                self?.retryScheduled = false
+                self?.start()
+            }
             return
         }
+        if tapFailed { pttLog("HotkeyMonitor: event tap created") }
+        tapFailed = false
         self.eventTap = tap
         runLoopSource = CFMachPortCreateRunLoopSource(nil, tap, 0)
         CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, .commonModes)

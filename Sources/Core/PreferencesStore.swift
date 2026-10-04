@@ -7,7 +7,7 @@ public enum AppTheme: String, CaseIterable, Identifiable {
     public var id: String { rawValue }
     public var label: String {
         switch self {
-        case .auto:  return "Auto"
+        case .auto:  return "System"
         case .light: return "Light"
         case .dark:  return "Dark"
         }
@@ -25,7 +25,7 @@ public enum HUDPosition: String, CaseIterable, Identifiable {
     case underMenuBarIcon, bottomCenter
     public var id: String { rawValue }
     public var label: String {
-        switch self { case .underMenuBarIcon: return "Under menu bar icon"; case .bottomCenter: return "Bottom center" }
+        switch self { case .underMenuBarIcon: return "Under the icon"; case .bottomCenter: return "Bottom of screen" }
     }
 }
 
@@ -125,7 +125,11 @@ public final class PreferencesStore: ObservableObject {
     /// The second hotkey works alongside the first; switched off it is ignored.
     @AppStorage("hotkey2Enabled")  public var hotkey2Enabled: Bool = true
     @AppStorage("holdThresholdMs") public var holdThresholdMs: Int = 150
-    @AppStorage("hudPosition")     public var hudPosition: HUDPosition = .bottomCenter
+    @AppStorage("hudPosition")     public var hudPosition: HUDPosition = .underMenuBarIcon
+    /// "glass" or a PillColor name; see migrateRedesignDefaults().
+    @AppStorage("pillColor")       public var pillColor: String = "glass"
+    /// A recording stops by itself after this long (protects against a stuck key).
+    @AppStorage("maxRecordingMinutes") public var maxRecordingMinutes: Int = 5
     @AppStorage("modelID")         public var modelID: WhisperModelID = .parakeetUltra
     @AppStorage("geminiModel")     public var geminiModel: GeminiModelID = .transcribe
     /// Empty until the user picks an engine in onboarding.
@@ -184,6 +188,22 @@ public final class PreferencesStore: ObservableObject {
     }
 
     public var hasGeminiKey: Bool { geminiAPIKey?.isEmpty == false }
+
+    /// The redesign made "glass capsule under the icon" the default. Installs from
+    /// before it keep what they had: the black pill at the bottom of the screen.
+    public func migrateRedesignDefaults(_ defaults: UserDefaults = .standard) {
+        guard defaults.object(forKey: "pillColor") == nil else { return }
+        let existing = defaults.object(forKey: "transcriptionEngine") != nil
+            || defaults.object(forKey: "hudPosition") != nil
+        if existing {
+            if defaults.object(forKey: "hudPosition") == nil {
+                defaults.set(HUDPosition.bottomCenter.rawValue, forKey: "hudPosition")
+            }
+            defaults.set("black", forKey: "pillColor")
+        } else {
+            defaults.set("glass", forKey: "pillColor")
+        }
+    }
 
     public func applyAppearance() {
         NSApp.appearance = appTheme.nsAppearance

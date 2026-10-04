@@ -10,25 +10,28 @@ struct HotkeyRecorderView: View {
     @State private var monitor: Any?
     @State private var previousDeviceBits: UInt64 = 0
     @State private var rejected = false
-    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 8) {
-                Text(recording ? "Press a key…" : binding.label)
-                    .frame(minWidth: 160, alignment: .center)
-                    .padding(.vertical, 4).padding(.horizontal, 10)
-                    .pttSurface(glass: Capsule(), fallback: RoundedRectangle(cornerRadius: 6),
-                                fill: Color.secondary.opacity(recording ? 0.2 : 0.1),
-                                border: recording ? Color.accentColor.opacity(0.8) : nil,
-                                tint: recording ? Color.accentColor.opacity(0.3) : nil)
-                Button(recording ? "Cancel" : "Change") { toggle() }
+        VStack(alignment: .trailing, spacing: DS.s1) {
+            Button(action: toggle) {
+                Text(recording ? "Press a key…" : EngineText.keycap(binding))
+                    .frame(minWidth: 110)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 3)
+                    .background(RoundedRectangle(cornerRadius: 6).fill(Color(nsColor: .controlBackgroundColor)))
+                    .overlay(RoundedRectangle(cornerRadius: 6)
+                        .strokeBorder(recording ? Color.accentColor : Color.primary.opacity(0.14),
+                                      lineWidth: recording ? 2 : 0.5))
+                    .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .help(recording ? "Press the new key, or Esc to cancel" : "Click and press a new key")
+            .accessibilityLabel(recording ? "Recording a shortcut" : "Shortcut \(binding.label). Click to change")
             if rejected {
                 // A bare letter would stop typing system-wide.
                 Text("Add ⌃, ⌥ or ⌘ to that key, or use an F-key or a single modifier.")
-                    .font(.system(size: 11))
-                    .foregroundColor(PTT.textSoft(scheme))
+                    .font(DS.callout)
+                    .foregroundStyle(DS.warn)
             }
         }
         .onDisappear { stop() }

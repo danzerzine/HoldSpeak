@@ -46,19 +46,20 @@ public enum TranscriptionFailure: Error, Equatable {
         }
     }
 
+    /// Says what to do next; when the audio is kept for a retry, says that too.
     public var body: String {
         switch self {
-        case .whisperModelNotReady: return "Still loading, or download it in Preferences"
-        case .localEngineFailed:    return "Retry from the menu bar icon"
-        case .missingAPIKey:        return "Add it in Preferences → Audio"
-        case .invalidAPIKey:        return "Check it in Preferences → Audio"
+        case .whisperModelNotReady: return "Still loading, or download it in Settings → Recognition"
+        case .localEngineFailed:    return "Audio is kept. Retry from the menu"
+        case .missingAPIKey:        return "Audio is kept. Add the key in Settings → Recognition"
+        case .invalidAPIKey:        return "Audio is kept. Check the key in Settings → Recognition"
         // A key without billing runs on the free tier: a couple dozen requests a day.
         case .quotaExceeded(let daily, let retry):
-            if daily { return "Set up billing for the key in Google AI Studio" }
-            if let retry { return "Retry in \(retry) s, or set up billing in AI Studio" }
-            return "Set up billing for the key in Google AI Studio"
-        case .unreachable:          return "Check your internet connection"
-        case .serviceError:         return "Try again in a moment"
+            if daily { return "Audio is kept. Set up billing for the key, or switch to On this Mac" }
+            if let retry { return "Audio is kept. Retry in \(retry) s, or set up billing in AI Studio" }
+            return "Audio is kept. Set up billing for the key in Google AI Studio"
+        case .unreachable:          return "Audio is kept. Check your connection and retry from the menu"
+        case .serviceError:         return "Audio is kept. Retry from the menu in a moment"
         }
     }
 

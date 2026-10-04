@@ -3,7 +3,6 @@ import AVFoundation
 import Combine
 import ServiceManagement
 import SwiftUI
-@preconcurrency import UserNotifications
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -18,6 +17,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var popoverVM: PopoverViewModel!
     private var prefsWin: PreferencesWindowController?
     private var onboardingWin: NSWindow?
+    private let status = AppStatus.shared
+    /// True between the hotkey press and the end of capture; a release after the
+    /// recording limit already stopped it is ignored.
+    private var isRecording = false
+    private var limitTimer: Timer?
     private var modelsVM: ModelsViewModel!
     private var cancellables = Set<AnyCancellable>()
     /// Last values acted on, so unrelated defaults writes don't re-trigger them.
@@ -46,6 +50,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         Self.migrateFromHoldSpeak()
+        PreferencesStore.shared.migrateRedesignDefaults()
         PreferencesStore.shared.applyAppearance()
 
         do {
@@ -82,8 +87,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         popoverVM = PopoverViewModel(store: store, metricsEngine: metrics)
         popoverVM.onRetry = { [weak self] in self?.retryFailedDictation() }
+        if let dir = ProcessInfo.processInfo.environment["SPEAK_SNAPSHOT"] {
+            SnapshotRunner.run(into: dir, modelsVM: modelsVM, store: store, popoverVM: popoverVM)
+            return
+        }
         menu = MenuBarController(viewModel: popoverVM)
-        overlay = OverlayWindow(content: AnyView(hudView()))
+        overlay = OverlayWindow()
         hotkey = HotkeyMonitor()
 
         bind()
@@ -121,8 +130,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSUpdateDynamicServices()
 
         NotificationCenter.default.addObserver(forName: .openPreferences, object: nil, queue: .main) { [weak self] note in
-            let tab = (note.object as? String).flatMap(PrefsTab.init(rawValue:)) ?? .general
-            Task { @MainActor in self?.showPreferences(initialTab: tab) }
+            let pane = (note.object as? String).flatMap(SettingsPane.init(rawValue:)) ?? .general
+            Task { @MainActor in self?.showPreferences(initialPane: pane) }
         }
 
         handlePermissionsAndStart()
@@ -132,8 +141,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func handlePermissionsAndStart() {
         hotkey.start()
+        // Input Monitoring isn't required to start: the event tap runs on Accessibility.
         let perms = PermissionsManager.shared.current()
-        if !perms.allGranted || !PreferencesStore.shared.engineChosen { showOnboarding() }
+        if !perms.microphone || !perms.accessibility || !PreferencesStore.shared.engineChosen { showOnboarding() }
     }
 
     private func showOnboarding() {
@@ -141,6 +151,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             modelsVM: modelsVM,
             needsEngine: !PreferencesStore.shared.engineChosen,
             onEngineChosen: { [weak self] kind in self?.chooseEngine(kind) },
+            onTryPress: { [weak self] in self?.startRecording() },
+            onTryRelease: { [weak self] in self?.endRecording() },
             onDone: { [weak self] in
                 self?.onboardingWin?.close()
                 self?.onboardingWin = nil
@@ -149,8 +161,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         let hc = NSHostingController(rootView: content)
         let win = NSWindow(contentViewController: hc)
-        win.title = "Welcome"
-        win.styleMask = [.titled, .closable]
+        win.title = "Welcome to Speak!"
+        win.styleMask = [.titled, .closable, .fullSizeContentView]
+        win.titlebarAppearsTransparent = true
+        win.titleVisibility = .hidden
+        win.isMovableByWindowBackground = true
         win.center()
         win.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
@@ -179,12 +194,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let text = pboard.string(forType: .string),
               !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         CorrectionDraft.shared.start(with: text)
-        showPreferences(initialTab: .terminology)
+        showPreferences(initialPane: .dictionary)
     }
 
-    private func showPreferences(initialTab: PrefsTab = .general) {
+    private func showPreferences(initialPane: SettingsPane = .general) {
         if prefsWin == nil { prefsWin = PreferencesWindowController() }
-        let view = PreferencesView(
+        let view = SettingsView(
             modelsVM: modelsVM,
             historyStore: store,
             onClearHistory: { [weak self] in
@@ -195,16 +210,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 PreferencesStore.shared.metricsResetAtMs = Int(Date().timeIntervalSince1970 * 1000)
                 self?.popoverVM.refresh()
             },
-            initialTab: initialTab
+            initialPane: initialPane
         )
         prefsWin?.present(view.id(UUID()))
     }
 
-    @ViewBuilder private func hudView() -> some View {
-        HUDPillView()
-    }
+    private var modelLoads = 0
 
     private func loadModel(_ modelID: WhisperModelID) {
+        modelLoads += 1
+        status.modelLoading = true
         Task {
             pttLog("Preloading model: \(modelID.rawValue)")
             do {
@@ -213,6 +228,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             } catch {
                 pttLog("Model preload FAILED: \(error)")
             }
+            modelLoads -= 1
+            if modelLoads == 0 { status.modelLoading = false }
         }
     }
 
@@ -278,35 +295,59 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .sink { [weak self] error in
                 pttLog("Recorder failure: \(error)")
                 guard let self else { return }
-                self.overlay.hide()
+                self.stopLimitTimer()
+                self.isRecording = false
+                self.status.phase = .idle
                 if case AudioRecorderError.stalled = error {
-                    self.notify("Microphone not responding", "Audio was reset — try again.")
+                    self.showMessage(.error, "Microphone not responding",
+                                     "Audio was reset. Hold the key and try again", seconds: 4)
+                } else {
+                    self.overlay.hide()
                 }
             }
             .store(in: &cancellables)
 
     }
 
+    private var hudAnchor: CGRect? { menu.statusItemFrame }
+    private var hudScreen: NSScreen? { menu.statusItemScreen }
+
+    private func showMessage(_ kind: HUDMessageKind, _ title: String, _ detail: String, seconds: Double) {
+        overlay.flash(.message(kind, title: title, detail: detail),
+                      anchor: hudAnchor, screen: hudScreen, seconds: seconds)
+    }
+
     private func startRecording() {
+        guard !isRecording else { return }
         pttLog("startRecording")
+        isRecording = true
         hudGeneration += 1
         recorder.start(input: PreferencesStore.shared.inputSelection)
-        overlay.update(AnyView(hudView()))
-        overlay.show(anchor: menu.statusItemFrame)
+        status.phase = .listening
+        overlay.show(.listening, anchor: hudAnchor, screen: hudScreen)
+        startLimitTimer()
     }
 
     private func cancelRecording() {
+        guard isRecording else { return }
         pttLog("cancelRecording (tap shorter than hold threshold)")
+        isRecording = false
+        stopLimitTimer()
         recorder.stop { [weak self] in
             _ = self?.engine.takeSamples() // discard the tap's audio
         }
+        status.phase = .idle
         overlay.hide()
     }
 
     private func endRecording() {
+        guard isRecording else { return }
         pttLog("endRecording")
+        isRecording = false
+        stopLimitTimer()
         let generation = hudGeneration
-        HUDAmplitudeModel.shared.setPhase(.processing)
+        status.phase = .transcribing
+        overlay.update(.transcribing)
         recorder.stop { [weak self] in
             guard let self else { return }
             // Take the samples now, synchronously: the next recording's chunks can
@@ -314,6 +355,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let samples = self.engine.takeSamples()
             Task { @MainActor in await self.transcribe(samples, generation: generation) }
         }
+    }
+
+    /// Stops a recording that runs past the limit (a stuck key, a forgotten hold).
+    private func startLimitTimer() {
+        stopLimitTimer()
+        let minutes = PreferencesStore.shared.maxRecordingMinutes
+        guard minutes > 0 else { return }
+        let t = Timer(timeInterval: TimeInterval(minutes * 60), repeats: false) { [weak self] _ in
+            Task { @MainActor in
+                pttLog("Recording limit reached (\(minutes) min)")
+                self?.endRecording()
+            }
+        }
+        RunLoop.main.add(t, forMode: .common)
+        limitTimer = t
+    }
+
+    private func stopLimitTimer() {
+        limitTimer?.invalidate()
+        limitTimer = nil
     }
 
     /// Audio of the last dictation that failed to transcribe, kept for one retry.
@@ -325,56 +386,54 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.closePopoverAndReturnFocus()
         hudGeneration += 1
         let generation = hudGeneration
-        overlay.update(AnyView(hudView()))
-        HUDAmplitudeModel.shared.setPhase(.processing)
-        overlay.show(anchor: menu.statusItemFrame)
+        status.phase = .transcribing
+        overlay.show(.transcribing, anchor: hudAnchor, screen: hudScreen)
         Task { @MainActor in await self.transcribe(samples, generation: generation) }
     }
 
     private func transcribe(_ samples: [Float], generation: Int) async {
         let outcome = await self.coordinator.finishRecording(samples: samples)
-        if case .failed(let failure) = outcome {
-            self.failedSamples = samples
-            self.popoverVM.failedDictation = failure.title
-        } else if case .empty = outcome {
-            // Silence: keep any earlier failure available for retry.
-        } else {
-            self.failedSamples = nil
-            self.popoverVM.failedDictation = nil
+        let current = generation == hudGeneration
+        if current { status.phase = .idle }
+        switch outcome {
+        case .failed(let failure):
+            failedSamples = samples
+            popoverVM.failedDictation = .init(title: failure.title, seconds: samples.count / 16_000)
+            status.lastDictationFailed = true
+        case .empty:
+            break // silence: keep any earlier failure available for retry
+        default:
+            failedSamples = nil
+            popoverVM.failedDictation = nil
         }
-        if case .inserted = outcome {
-            self.finishHUD(generation: generation, success: true)
-        } else {
-            self.finishHUD(generation: generation, success: false)
-        }
+        guard current else { popoverVM.refresh(); return }
         switch outcome {
         case .empty:
+            overlay.hide()
             return
-        case .skippedSecureField:
-            self.notify("Skipped password field", "Transcript saved to history.")
-        case .noFocus:
-            self.notify("No focused input", "Transcript saved to history.")
         case .inserted:
-            break
+            status.inserted()
+            overlay.hide()
+        case .skippedSecureField:
+            showMessage(.lock, "Password field — nothing typed",
+                        "The text wasn’t saved to history either", seconds: 4)
+        case .noFocus:
+            if !status.permissions.accessibility {
+                showMessage(.warn, "Accessibility is off",
+                            "Open the menu to fix it — the text is in history", seconds: 5)
+            } else {
+                showMessage(.warn, "No text field — nothing typed",
+                            "Saved to history. Open the menu to copy it", seconds: 4)
+            }
         case .failed(let failure):
-            self.overlay.flash(AnyView(HUDMessageView(title: failure.title, detail: failure.body)),
-                               anchor: self.menu.statusItemFrame,
-                               seconds: failure.displaySeconds)
-            return
+            if failure == .whisperModelNotReady, status.modelLoading {
+                showMessage(.loading, "Loading \(EngineText.modelName())",
+                            "First start after an update takes about 20 seconds. Audio is kept", seconds: 5)
+            } else {
+                showMessage(.error, failure.title, failure.body, seconds: failure.displaySeconds)
+            }
         }
-        self.popoverVM.refresh()
-    }
-
-    /// Shows a brief checkmark after a successful insert, then hides the HUD —
-    /// unless another recording has started in the meantime.
-    private func finishHUD(generation: Int, success: Bool) {
-        guard generation == hudGeneration else { return }
-        guard success else { overlay.hide(); return }
-        HUDAmplitudeModel.shared.setPhase(.done)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
-            guard let self, generation == self.hudGeneration else { return }
-            self.overlay.hide()
-        }
+        popoverVM.refresh()
     }
 
     /// First launch as Speak!: settings, files and the login item come over from
@@ -393,18 +452,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if UserDefaults.standard.bool(forKey: "launchAtLogin") {
             do { try SMAppService.mainApp.register() } catch {
                 pttLog("Launch at login re-register failed: \(error)")
-            }
-        }
-    }
-
-    private func notify(_ title: String, _ body: String) {
-        let content = UNMutableNotificationContent()
-        content.title = title
-        content.body = body
-        let req = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert]) { granted, _ in
-            if granted {
-                UNUserNotificationCenter.current().add(req, withCompletionHandler: nil)
             }
         }
     }

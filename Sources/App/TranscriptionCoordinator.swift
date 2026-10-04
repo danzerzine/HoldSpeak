@@ -67,6 +67,8 @@ final class TranscriptionCoordinator {
 
         let insertion = TextInserter.insert(cleaned + " ")
         pttLog("insertion: \(insertion)")
+        // A password field gets nothing: not typed, and not kept in history (audit 2.10).
+        if insertion == .skippedSecureField { return .skippedSecureField }
         let record = TranscriptionRecord(
             id: nil,
             createdAt: Int64(Date().timeIntervalSince1970 * 1000),

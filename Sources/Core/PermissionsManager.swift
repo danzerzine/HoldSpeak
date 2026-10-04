@@ -36,12 +36,20 @@ public final class PermissionsManager {
         }
     }
 
+    public func openMicrophoneSettings() {
+        let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")!
+        NSWorkspace.shared.open(url)
+    }
+
     public func openAccessibilitySettings() {
         let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
         NSWorkspace.shared.open(url)
     }
 
     public func openInputMonitoringSettings() {
+        // Asking first puts the app into the Input Monitoring list; without it the
+        // user has to add it with "+" by hand.
+        _ = IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
         let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")!
         NSWorkspace.shared.open(url)
     }
