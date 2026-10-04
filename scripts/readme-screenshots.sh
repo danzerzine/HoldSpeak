@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Renders the README images into docs/screenshots from the installed app:
+# Renders the README hero image into docs/screenshots from the installed app:
 # SPEAK_SNAPSHOT draws every screen to PNG at 2x, SPEAK_DEMO swaps in a throwaway
 # history (a busy day of dictation) so your own history never reaches the README.
 # Needs ImageMagick (magick) and cwebp. Run after ./scripts/rebuild.sh.
@@ -25,10 +25,6 @@ frame() { # in out radius
 }
 
 frame "$RAW/popover.png" "$RAW/popover-framed.png" 24
-for pane in recognition dictionary history; do
-  frame "$RAW/settings-$pane.png" "$RAW/f-settings-$pane.png" 32
-done
-frame "$RAW/onboarding-1.png" "$RAW/f-onboarding.png" 32
 
 # The black recording pill, cut along its own edge (found from its dark pixels).
 geo=$(magick "$RAW/hud-black-listening.png" -colorspace gray -threshold 30% -negate -trim -format '%wx%h%O' info:)

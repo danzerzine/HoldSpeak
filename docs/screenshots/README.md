@@ -1,6 +1,6 @@
 # Screenshots
 
-The images in the main README. Regenerate them from the installed app with demo data:
+The hero image in the main README. Regenerate them from the installed app with demo data:
 
 ```bash
 ./scripts/readme-screenshots.sh

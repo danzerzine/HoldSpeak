@@ -37,23 +37,7 @@ Speech is recognized by **NVIDIA Parakeet** on the Mac itself. On a 2020 MacBook
 
 **First launch takes four short steps**: what the app does, where to recognize speech, three macOS permissions (checked automatically, no "Re-check" buttons), and a practice field to try your first dictation. The model downloads while you grant permissions.
 
-<p align="center">
-  <img src="docs/screenshots/onboarding.webp" width="560" alt="Onboarding: choose On this Mac or Gemini" />
-</p>
-
 **Settings** follow System Settings: a sidebar with General, Shortcut, Recognition, Dictionary and History.
-
-<p align="center">
-  <img src="docs/screenshots/settings-recognition.webp" width="680" alt="Settings: Recognition" />
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/settings-dictionary.webp" width="680" alt="Settings: Dictionary" />
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/settings-history.webp" width="680" alt="Settings: History" />
-</p>
 
 ## Install
 
@@ -116,7 +100,7 @@ Requires Xcode 26 and [XcodeGen](https://github.com/yonaskolb/XcodeGen).
 ./scripts/rebuild.sh
 ```
 
-It generates the project, builds a Release copy, installs it to `/Applications` and signs it. Run `scripts/setup-signing.sh` once so macOS keeps the permissions across rebuilds. `scripts/readme-screenshots.sh` regenerates the images on this page from demo data.
+It generates the project, builds a Release copy, installs it to `/Applications` and signs it. Run `scripts/setup-signing.sh` once so macOS keeps the permissions across rebuilds. `scripts/readme-screenshots.sh` regenerates the image at the top of this page from demo data.
 
 ## About this fork
 
