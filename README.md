@@ -16,7 +16,7 @@ A free, local alternative to paid Whisper wrappers. Built for one reason: talkin
 
 ## Features
 
-- **Local transcription** through WhisperKit (CoreML, GPU)
+- **Local transcription** with NVIDIA Parakeet (FluidAudio) by default, or Whisper models through WhisperKit (CoreML, GPU)
 - **Optional cloud engine** — Google Gemini with your own API key, for higher accuracy on mixed-language speech and jargon
 - **Code-switching RU/EN/UK and more** — in auto mode the language is chosen only from the ones you have in System Settings → Language & Region
 - **Insertion without clipboard** — via `CGEventKeyboardSetUnicodeString`; password fields are skipped
@@ -32,7 +32,7 @@ Grab the latest DMG from the [Releases page](https://github.com/danzerzine/HoldS
 
 Because the app is self-signed, macOS will block the first launch. Open **System Settings → Privacy & Security**, scroll to the message *"HoldSpeak was blocked…"* and click **Open Anyway**. Confirm with Touch ID / password. After that it launches normally from Launchpad / Applications. The app runs as a menu bar extra — look for the radio icon in the right side of your menu bar; it won't appear in the Dock or Cmd-Tab.
 
-On first launch, choose how speech is recognized — **Whisper** (on this Mac, downloads a model) or **Gemini** (Google cloud, asks for your API key) — then grant three permissions:
+On first launch, choose how speech is recognized — **on this Mac** (downloads Parakeet Ultra, ~610 MB) or **Gemini** (Google cloud, asks for your API key) — and the language you mostly dictate in (it starts on your system language), then grant three permissions:
 
 - **Microphone** — for audio capture
 - **Accessibility** — for the global hotkey and text insertion
@@ -58,7 +58,7 @@ Your preferences, history, and downloaded models live in `~/Library/Application 
 
 The default is **Parakeet Ultra (~610 MB)** — fast and accurate for Russian and English. You can switch to a Whisper model (Tiny, Small, Turbo) in Preferences → Audio; installs that were on Turbo stay on it after an update.
 
-If you already have MacWhisper / another WhisperKit client installed, their models will be picked up automatically. Otherwise the first model is downloaded to `~/Library/Application Support/HoldSpeak/Models/`.
+If you already have MacWhisper / another WhisperKit client installed, their models will be picked up automatically. Otherwise the first model is downloaded to `~/Library/Application Support/HoldSpeak/models/`.
 
 To free disk space, Preferences → Audio → **Downloaded models → Delete…** removes every model HoldSpeak downloaded. Models that belong to MacWhisper or other apps are left alone.
 
@@ -102,18 +102,22 @@ Combining **Tiny + explicit language** gives the lowest end-to-end latency. Comb
 
 ## Usage
 
-1. Hold **Right Option** (or whatever you set in Preferences).
+1. Hold **Right Option** or **Right Command** (the two default hotkeys; change either, or switch the second one off, in Preferences → General).
 2. Speak. A HUD appears in the top right corner (or bottom center — configurable) showing the mic level.
 3. Release the key. After ~1–2 s the text is inserted into the focused field.
 4. If the field lost focus — open the menu bar icon: it shows the recent transcriptions; click to copy.
 
 ### Short taps
 
-By default, presses shorter than **150 ms** don't start recording — the key behaves as a normal Option. The threshold is configurable in Preferences → General (50–800 ms).
+Recording starts the moment you press the hotkey, so the first syllable isn't lost. Presses shorter than **150 ms** are discarded, and so is a hold during which you press another key: Option+letter or Command+C stays a shortcut instead of becoming a dictation. If the hotkey is a key combination such as ⌥Space, a short tap still reaches the app as that keystroke. The threshold is configurable in Preferences → General (50–800 ms).
+
+A bare letter can't be a hotkey: it would stop typing everywhere. Use a modifier on its own, a key with ⌃/⌥/⌘, or an F-key.
+
+If recognition fails (the local model throws, Gemini is unreachable or out of quota), the HUD says so and the menu bar popover offers **Retry**: the audio of the last failed dictation is kept in memory until the next successful one.
 
 ## Preferences
 
-- **General** — hotkey, hold threshold, HUD position (under the icon / bottom center), theme (Auto / Light / Dark), launch at login, update check
+- **General** — two hotkeys (the second can be switched off), hold threshold, HUD position (under the icon / bottom center), theme (Auto / Light / Dark), launch at login, update check
 - **Audio** — microphone, language, model (Whisper or Gemini), model download / deletion, Gemini API key
 - **Terms** — terminology dictionary (see below)
 - **History** — clear history and reset metrics
@@ -132,7 +136,7 @@ When two of your preferred languages score close in detection (e.g. a sentence m
 
 ### Terminology dictionary
 
-Whisper reliably recognizes common speech but routinely mangles IT terminology in mixed RU+EN dictation (`пулл реквест` instead of `pull request`, `кубернетес` instead of `Kubernetes`, and so on). The **Terms** tab lets you map your spoken variants to a single canonical form, which is then substituted in the transcript before it's inserted. Each Primary language keeps its own set of terms — in Auto mode the active set follows the detected language of the current utterance, so Russian-heavy speech uses your Russian dictionary and English-heavy speech uses the English one.
+Whisper reliably recognizes common speech but routinely mangles IT terminology in mixed RU+EN dictation (`пулл реквест` instead of `pull request`, `кубернетес` instead of `Kubernetes`, and so on). The **Terms** tab lets you map your spoken variants to a single canonical form, which is then substituted in the transcript before it's inserted. Each Primary language keeps its own set of terms. With a Whisper model in Auto mode the active set follows the detected language of the current utterance; Parakeet and Gemini don't report a language, so with them the set stays on your Primary language (or the last detected one).
 
 With Parakeet the dictionary also works by sound. A small keyword model (parakeet-ctc-110m, ~98 MB, downloaded the first time Parakeet loads) listens for words that sound like a term with a Latin spelling and swaps that spelling in, so `пул реквист` and `Basicampi` come out as `pull request` and `Basecamp` even when that exact misspelling is not in your list. It adds about 60–80 ms per phrase. Whisper is not affected.
 
@@ -144,7 +148,7 @@ With Parakeet the dictionary also works by sound. A small keyword model (parakee
 
 **Default dictionaries.** The app ships with curated IT defaults for **Russian (~110 entries)**, **English (~120)**, and **Ukrainian (~130)** — all spanning the whole dev cycle: VCS (pull request, rebase, cherry-pick), languages (TypeScript, Swift, Rust), frontend (React, Tailwind, Next.js), UX (wireframe, mockup, accessibility), backend (endpoint, middleware, migration), data (Postgres, Redis, ClickHouse), DevOps (Docker, Kubernetes, Helm chart), cloud (AWS, S3, Lambda), and AI tooling (Claude, MCP, Opus). On first launch the bundled lists are copied into your Application Support directory — from then on the files are yours.
 
-**Switching languages in the editor.** Preferences → Terms has a **Last detected** picker (top-right, styled like the General dropdowns). It defaults to the language of your most recent utterance, but you can switch it to any other language to edit that set — handy for seeding an English dictionary before you start dictating in English.
+**Switching languages in the editor.** Preferences → Terms has a **Dictionary for** picker (top-right). It opens on the dictionary dictation uses right now; switch it to edit another language's set, for example to seed an English dictionary before you dictate in English. Browsing another dictionary doesn't change which one dictation uses.
 
 **How updates work.** App updates do **not** touch your dictionary — your edits, additions, and deletions persist verbatim. To pull in new entries from the latest bundled default, open Preferences → Terms and click **Load defaults…**:
 
@@ -157,7 +161,7 @@ With Parakeet the dictionary also works by sound. A small keyword model (parakee
 
 The Preferences window can be resized; 560×428 is its minimum.
 
-**Import / Export.** Pure JSON — commit it to a dotfiles repo, share with a team, seed a new machine.
+**Import / Export.** Import asks whether to add the file's terms to your list or replace it, and says so if the file isn't a dictionary export. Deleting a term shows **Undo** under the correction row. Pure JSON — commit it to a dotfiles repo, share with a team, seed a new machine.
 
 **Storage.** `~/Library/Application Support/HoldSpeak/terminology/<lang>.json` (one file per language: `ru.json`, `en.json`, `uk.json`, …).
 
