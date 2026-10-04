@@ -24,6 +24,37 @@ final class TerminologyStoreTests: XCTestCase {
     }
 
     @MainActor
+    func test_restore_putsEntryBackAtItsPosition() {
+        let store = newStore()
+        for name in ["A", "B", "C"] {
+            store.add(TerminologyEntry(canonical: name, variants: [], caseSensitive: false))
+        }
+        let b = store.entries[1]
+        store.remove(id: b.id)
+        store.restore(b, at: 1)
+        XCTAssertEqual(store.entries.map(\.canonical), ["A", "B", "C"])
+    }
+
+    @MainActor
+    func test_addMissing_keepsExistingAndSkipsDuplicates() {
+        let store = newStore()
+        store.add(TerminologyEntry(canonical: "GitHub", variants: ["гитхаб"], caseSensitive: false))
+        store.addMissing([TerminologyEntry(canonical: "github", variants: [], caseSensitive: false),
+                          TerminologyEntry(canonical: "Basecamp", variants: ["бойскап"], caseSensitive: false)])
+        XCTAssertEqual(store.entries.map(\.canonical), ["GitHub", "Basecamp"])
+        XCTAssertEqual(store.entries.first?.variants, ["гитхаб"])
+    }
+
+    @MainActor
+    func test_browsingAnotherDictionary_doesNotChangeDictationLanguage() {
+        let store = newStore(language: "ru")
+        store.setActiveLanguage("en")
+        XCTAssertEqual(store.dictationLanguage, "ru")
+        store.setDictationLanguage("uk")
+        XCTAssertEqual(store.activeLanguage, "en")
+    }
+
+    @MainActor
     func test_roundTripJSON() {
         let dir = tempDir()
         let s1 = newStore(directory: dir)

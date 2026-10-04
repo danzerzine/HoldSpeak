@@ -25,6 +25,8 @@ struct TerminologyPreferencesView: View {
     private enum CorrectionField { case wrong, right }
     @State private var right: String = ""
     @State private var feedback: String?
+    /// The last deleted entry and its position, while Undo is offered.
+    @State private var removed: (entry: TerminologyEntry, index: Int)?
     @FocusState private var correctionFocus: CorrectionField?
 
     @State private var editing: TerminologyEntry?
@@ -82,8 +84,15 @@ struct TerminologyPreferencesView: View {
             }
             footer
         }
-        .onAppear(perform: focusDraft)
-        .onChange(of: draft.request) { _ in focusDraft() }
+        .onAppear {
+            // Open the dictionary dictation uses now, where a fix most likely belongs.
+            store.setActiveLanguage(store.dictationLanguage)
+            focusDraft()
+        }
+        .onChange(of: draft.request) { _ in
+            store.setActiveLanguage(store.dictationLanguage)
+            focusDraft()
+        }
         .background(
             Button("") { searchFocused = true }
                 .keyboardShortcut("f", modifiers: .command)
@@ -91,7 +100,7 @@ struct TerminologyPreferencesView: View {
                 .frame(width: 0, height: 0)
                 .allowsHitTesting(false)
         )
-        .onChange(of: store.activeLanguage) { _ in searchText = "" }
+        .onChange(of: store.activeLanguage) { _ in searchText = ""; removed = nil; feedback = nil }
         .sheet(item: $editing) { entry in
             EditorSheet(entry: entry) { updated in
                 if store.entries.contains(where: { $0.id == updated.id }) {
@@ -135,13 +144,24 @@ struct TerminologyPreferencesView: View {
                 correctionField("Should be", placeholder: "Basecamp",
                                 text: $right, field: .right, onSubmit: saveCorrection)
             }
-            Text(feedback ?? "Press Return to save.")
-                .font(.system(size: 11))
-                .foregroundColor(PTT.textSoft(scheme))
+            HStack(spacing: 6) {
+                Text(feedback ?? "Press Return to save.")
+                    .font(.system(size: 11))
+                    .foregroundColor(PTT.textSoft(scheme))
+                if let removed {
+                    Button("Undo") {
+                        store.restore(removed.entry, at: removed.index)
+                        self.removed = nil
+                        feedback = nil
+                    }
+                    .buttonStyle(.link)
+                    .font(.system(size: 11))
+                }
+            }
         }
         // Typing starts a new correction; clearing the fields after a save keeps the message.
-        .onChange(of: draft.wrong) { if !$0.isEmpty { feedback = nil } }
-        .onChange(of: right) { if !$0.isEmpty { feedback = nil } }
+        .onChange(of: draft.wrong) { if !$0.isEmpty { feedback = nil; removed = nil } }
+        .onChange(of: right) { if !$0.isEmpty { feedback = nil; removed = nil } }
     }
 
     private func correctionField(_ label: String, placeholder: String, text: Binding<String>,
@@ -198,7 +218,7 @@ struct TerminologyPreferencesView: View {
         let currentLabel = languages.first(where: { $0.rawValue == store.activeLanguage })?.label
             ?? store.activeLanguage.uppercased()
         return VStack(alignment: .trailing, spacing: 4) {
-            Text("Last detected")
+            Text("Dictionary for")
                 .font(.system(size: 11))
                 .foregroundColor(PTT.textMuted(scheme))
             StyledDropdown(selection: binding, width: importExportWidth, current: currentLabel) {
@@ -283,7 +303,7 @@ struct TerminologyPreferencesView: View {
                     .font(.system(size: 12))
                     .foregroundColor(PTT.textMuted(scheme))
             }.buttonStyle(.plain)
-            Button { store.remove(id: entry.id) } label: {
+            Button { remove(entry) } label: {
                 Image(systemName: "trash")
                     .font(.system(size: 12))
                     .foregroundColor(PTT.textMuted(scheme))
@@ -329,6 +349,13 @@ struct TerminologyPreferencesView: View {
 
     // MARK: - Actions
 
+    private func remove(_ entry: TerminologyEntry) {
+        guard let index = store.entries.firstIndex(where: { $0.id == entry.id }) else { return }
+        store.remove(id: entry.id)
+        removed = (entry, index)
+        feedback = "Removed “\(entry.canonical)”."
+    }
+
     private func confirmLoadDefaults() {
         let alert = NSAlert()
         alert.messageText = "Load default IT dictionary?"
@@ -347,11 +374,34 @@ struct TerminologyPreferencesView: View {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.json]
         panel.allowsMultipleSelection = false
-        guard panel.runModal() == .OK, let url = panel.url,
-              let data = try? Data(contentsOf: url),
-              let entries = try? JSONDecoder().decode([TerminologyEntry].self, from: data)
-        else { return }
-        store.replaceAll(entries)
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        let entries: [TerminologyEntry]
+        do {
+            entries = try JSONDecoder().decode([TerminologyEntry].self, from: Data(contentsOf: url))
+        } catch {
+            showError("Couldn't read \(url.lastPathComponent)",
+                      "It isn't a HoldSpeak dictionary export. (\(error.localizedDescription))")
+            return
+        }
+        let alert = NSAlert()
+        alert.messageText = "Import \(entries.count) terms?"
+        alert.informativeText = "Add keeps your list and adds terms it doesn't have. Replace discards your current list."
+        alert.addButton(withTitle: "Add")
+        alert.addButton(withTitle: "Replace")
+        alert.addButton(withTitle: "Cancel")
+        switch alert.runModal() {
+        case .alertFirstButtonReturn:  store.addMissing(entries)
+        case .alertSecondButtonReturn: store.replaceAll(entries)
+        default: break
+        }
+    }
+
+    private func showError(_ title: String, _ detail: String) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = title
+        alert.informativeText = detail
+        alert.runModal()
     }
 
     private func exportJSON() {
@@ -361,8 +411,10 @@ struct TerminologyPreferencesView: View {
         guard panel.runModal() == .OK, let url = panel.url else { return }
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        if let data = try? encoder.encode(store.entries) {
-            try? data.write(to: url)
+        do {
+            try encoder.encode(store.entries).write(to: url)
+        } catch {
+            showError("Couldn't save \(url.lastPathComponent)", error.localizedDescription)
         }
     }
 }

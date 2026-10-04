@@ -141,7 +141,7 @@ final class WhisperTranscriber {
             var booster: ParakeetVocabulary.Booster?
             if boostTerms {
                 let language = PreferencesStore.shared.primaryLanguage.whisperCode
-                    ?? TerminologyStore.shared.activeLanguage
+                    ?? TerminologyStore.shared.dictationLanguage
                 booster = await vocabulary.booster(for: TerminologyStore.shared.entries(for: language))
             }
             // The keyword model needs only the audio, so it runs while Parakeet decodes.

@@ -15,7 +15,7 @@ final class GeminiTranscriber {
         // language simply stays whatever it was.
         let language = prefs.primaryLanguage.whisperCode
         let terms = TerminologyStore.shared
-            .entries(for: language ?? TerminologyStore.shared.activeLanguage)
+            .entries(for: language ?? TerminologyStore.shared.dictationLanguage)
             .map(\.canonical)
         let model = prefs.geminiModel
         let started = Date()

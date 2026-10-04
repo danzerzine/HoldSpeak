@@ -51,9 +51,9 @@ final class TranscriptionCoordinator {
         pttLog("result raw: \(logText(result.text)) lang=\(result.language ?? "?") durMs=\(result.durationMs) elapsedMs=\(elapsedMs)")
 
         let prefs = PreferencesStore.shared
-        let lang = result.language ?? prefs.primaryLanguage.whisperCode ?? TerminologyStore.shared.activeLanguage
+        let lang = result.language ?? prefs.primaryLanguage.whisperCode ?? TerminologyStore.shared.dictationLanguage
         if prefs.primaryLanguage == .auto, let detected = result.language, !detected.isEmpty {
-            TerminologyStore.shared.setActiveLanguage(detected)
+            TerminologyStore.shared.setDictationLanguage(detected)
         }
         let cleaned = TextCleaner.clean(
             result.text,

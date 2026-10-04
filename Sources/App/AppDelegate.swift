@@ -104,6 +104,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if prefs.engineChosen, UserDefaults.standard.object(forKey: "modelID") == nil {
             prefs.modelID = .turbo
         }
+        // Russian was the default before the system language: keep it for them too.
+        if prefs.engineChosen, UserDefaults.standard.object(forKey: "primaryLanguage") == nil {
+            prefs.primaryLanguage = .ru
+        }
         appliedModelID = prefs.modelID
         appliedEngine = prefs.engineChosen ? prefs.engine : nil
         // A fresh install loads nothing until onboarding picks an engine; Gemini
@@ -239,7 +243,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let pref = PreferencesStore.shared.primaryLanguage
         appliedPrimaryLanguage = pref
         guard let code = pref.whisperCode else { return } // auto → let per-utterance detection drive
-        TerminologyStore.shared.setActiveLanguage(code)
+        TerminologyStore.shared.setDictationLanguage(code)
     }
 
     private func bind() {

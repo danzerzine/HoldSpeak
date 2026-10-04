@@ -26,7 +26,11 @@ public final class TerminologyStore: ObservableObject {
     public static let shared = TerminologyStore()
 
     @Published public private(set) var entries: [TerminologyEntry] = []
+    /// The language the Terms tab shows and edits.
     @Published public private(set) var activeLanguage: String
+    /// Language of the last dictation: picks the dictionary at runtime. Kept apart
+    /// from `activeLanguage` so browsing another dictionary doesn't change dictation.
+    public private(set) var dictationLanguage: String
 
     private var cache: [String: [TerminologyEntry]] = [:]
 
@@ -38,11 +42,12 @@ public final class TerminologyStore: ObservableObject {
                 bundle: Bundle = .main,
                 defaultsBundlePrefix: String = "terminology-default",
                 legacyFlatFile: URL? = TerminologyStore.legacyFlatFile(),
-                initialLanguage: String = "ru") {
+                initialLanguage: String = PrimaryLanguage.systemDefault.whisperCode ?? "en") {
         self.directory = directory
         self.bundle = bundle
         self.defaultsBundlePrefix = defaultsBundlePrefix
         self.activeLanguage = initialLanguage
+        self.dictationLanguage = initialLanguage
         bootstrap(legacyFlatFile: legacyFlatFile)
         loadActive()
     }
@@ -87,6 +92,11 @@ public final class TerminologyStore: ObservableObject {
         guard !code.isEmpty, code != activeLanguage else { return }
         activeLanguage = code
         loadActive()
+    }
+
+    public func setDictationLanguage(_ code: String) {
+        guard !code.isEmpty else { return }
+        dictationLanguage = code
     }
 
     public func entries(for language: String) -> [TerminologyEntry] {
@@ -197,6 +207,20 @@ public final class TerminologyStore: ObservableObject {
         persistActive()
     }
 
+    /// Puts back an entry removed by mistake, at its old position when possible.
+    public func restore(_ entry: TerminologyEntry, at index: Int) {
+        guard !entries.contains(where: { $0.id == entry.id }) else { return }
+        entries.insert(entry, at: min(max(index, 0), entries.count))
+        persistActive()
+    }
+
+    /// Adds entries whose canonical form isn't in the list yet.
+    public func addMissing(_ newEntries: [TerminologyEntry]) {
+        let existing = Set(entries.map { $0.canonical.lowercased() })
+        entries.append(contentsOf: newEntries.filter { !existing.contains($0.canonical.lowercased()) })
+        persistActive()
+    }
+
     public func replaceAll(_ newEntries: [TerminologyEntry]) {
         entries = newEntries
         persistActive()
@@ -211,8 +235,8 @@ public final class TerminologyStore: ObservableObject {
         case .replaceAll:
             entries = defaults
         case .skipExisting:
-            let existing = Set(entries.map { $0.canonical.lowercased() })
-            entries.append(contentsOf: defaults.filter { !existing.contains($0.canonical.lowercased()) })
+            addMissing(defaults)
+            return
         }
         persistActive()
     }

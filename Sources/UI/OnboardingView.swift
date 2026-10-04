@@ -40,8 +40,8 @@ struct OnboardingView: View {
             Text("How should HoldSpeak recognize speech?")
                 .font(.title2).bold()
             engineCard(.whisper,
-                       title: "Whisper — on this Mac",
-                       detail: "Free and private, works offline. Downloads a ~1.5 GB model now.")
+                       title: "On this Mac — \(prefs.modelID.isParakeet ? "Parakeet" : "Whisper")",
+                       detail: "Free and private, works offline. Downloads \(prefs.modelID.shortLabel) now.")
             engineCard(.gemini,
                        title: "Gemini — Google cloud",
                        detail: "Usually more accurate with mixed languages and jargon. Needs your own Google AI Studio API key with billing.")
@@ -49,6 +49,10 @@ struct OnboardingView: View {
                 GeminiKeyEditor(width: 420)
                     .padding(.leading, 4)
             }
+            Picker("I mostly dictate in", selection: $prefs.primaryLanguage) {
+                ForEach(PrimaryLanguage.allCases) { Text($0.label).tag($0) }
+            }
+            .frame(width: 320)
             Text("You can switch later in Preferences → Audio.")
                 .font(.caption)
                 .foregroundColor(.secondary)
@@ -113,25 +117,10 @@ struct OnboardingView: View {
             row("Input Monitoring", ok: perms.inputMonitoring) {
                 PermissionsManager.shared.openInputMonitoringSettings()
             }
-            if prefs.engine == .whisper {
-                row("Documents folder (reuse existing WhisperKit models)",
-                    ok: perms.documentsAccess,
-                    optional: true) {
-                    if PermissionsManager.shared.requestDocumentsAccess() {
-                        refresh()
-                    } else {
-                        PermissionsManager.shared.openDocumentsSettings()
-                    }
-                }
-                Text("The Documents permission is optional — without it, HoldSpeak still works and just downloads models into its own folder on first use.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
             Spacer(minLength: 0)
             if modelsVM.downloading {
                 HStack(spacing: 10) {
-                    Text("Downloading Whisper model…")
+                    Text("Downloading \(prefs.modelID.shortLabel)…")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     ProgressView(value: modelsVM.progress)

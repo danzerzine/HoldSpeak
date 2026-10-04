@@ -58,6 +58,14 @@ public enum PrimaryLanguage: String, CaseIterable, Identifiable {
     public var whisperCode: String? {
         self == .auto ? nil : rawValue
     }
+
+    /// The first system language HoldSpeak knows, else auto-detect.
+    public static var systemDefault: PrimaryLanguage {
+        for id in Locale.preferredLanguages {
+            if let lang = PrimaryLanguage(rawValue: String(id.prefix(2))) { return lang }
+        }
+        return .auto
+    }
 }
 
 public enum WhisperModelID: String, CaseIterable, Identifiable {
@@ -122,7 +130,7 @@ public final class PreferencesStore: ObservableObject {
     @AppStorage("geminiModel")     public var geminiModel: GeminiModelID = .transcribe
     /// Empty until the user picks an engine in onboarding.
     @AppStorage("transcriptionEngine") private var engineRaw: String = ""
-    @AppStorage("primaryLanguage") public var primaryLanguage: PrimaryLanguage = .ru
+    @AppStorage("primaryLanguage") public var primaryLanguage: PrimaryLanguage = PrimaryLanguage.systemDefault
     @AppStorage("launchAtLogin")   public var launchAtLogin: Bool = false
     @AppStorage("appTheme")        public var appTheme: AppTheme = .auto
     @AppStorage("autoPunctuation") public var autoPunctuation: Bool = true
