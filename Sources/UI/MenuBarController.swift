@@ -19,7 +19,9 @@ final class MenuBarController {
             if let radio = BundledIcon.radio {
                 // Copy: the shared image is also drawn by the popover at its own size.
                 let svg = radio.copy() as! NSImage
-                svg.size = NSSize(width: 18, height: 18)
+                // 17 pt tall as in the concept; the artwork is cropped tight, so keep its aspect.
+                let h: CGFloat = 17
+                svg.size = NSSize(width: (h * radio.size.width / radio.size.height).rounded(), height: h)
                 img = svg
             } else {
                 img = NSImage(systemSymbolName: "antenna.radiowaves.left.and.right",
