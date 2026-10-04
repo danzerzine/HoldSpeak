@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Build a signed .app, package as DMG, create a GitHub release.
 # Usage: ./scripts/release.sh 0.2.0
+#   NOTES_FILE=notes.txt ./scripts/release.sh 0.2.0   (skip the editor)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -27,6 +28,34 @@ if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
 fi
 git fetch -q origin main
 AHEAD="$(git rev-list --count origin/main..HEAD)"
+
+# "What's new": 2-3 plain lines for people, shown in the update dialog and on
+# the release page. Asked first, so nobody waits for it after the build.
+# NOTES_FILE skips the editor; otherwise $EDITOR opens with the commit
+# subjects since the previous tag as hints.
+mkdir -p dist
+NOTES="dist/notes.txt"
+PREV_TAG="$(git describe --tags --abbrev=0 2>/dev/null || true)"
+if [[ -n "${NOTES_FILE:-}" ]]; then
+  cp "$NOTES_FILE" "$NOTES"
+else
+  {
+    echo "# What's new in $VERSION: one change per line, in plain words for people"
+    echo "# who use the app (\"Faster start after sleep\"), not commit subjects."
+    echo "# Lines starting with # are dropped. Save an empty file to cancel."
+    echo "#"
+    echo "# Commits since ${PREV_TAG:-the start}:"
+    git log --format='#   %s' ${PREV_TAG:+"$PREV_TAG"..HEAD} | grep -v '^#   release: ' || true
+  } > "$NOTES"
+  "${EDITOR:-nano}" "$NOTES"
+fi
+grep -v '^#' "$NOTES" | sed -e 's/^[[:space:]]*[-*•][[:space:]]*//' -e '/^[[:space:]]*$/d' > "$NOTES.clean" || true
+mv "$NOTES.clean" "$NOTES"
+if [[ ! -s "$NOTES" ]]; then
+  echo "No release notes; stopped."
+  exit 1
+fi
+echo "What's new:"; sed 's/^/  - /' "$NOTES"
 
 # Bump versions in project.yml and Resources/Info.plist (xcodegen copies one into the other).
 BUILD_NUMBER="$(git rev-list --count HEAD)"
@@ -79,13 +108,9 @@ rm -rf "$STAGING"
 
 # Sparkle feed: sign the DMG with the EdDSA key from the login keychain
 # (generate_keys --account danzerzine-speak) and list it in docs/appcast.xml,
-# which GitHub Pages serves to the app. "What's new" is the commit subjects
-# since the previous tag.
+# which GitHub Pages serves to the app, with the notes asked for above.
 SIGN_UPDATE="build/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update"
 SIGNED="$("$SIGN_UPDATE" --account danzerzine-speak "$DMG")"
-NOTES="dist/notes.txt"
-PREV_TAG="$(git describe --tags --abbrev=0 2>/dev/null || true)"
-git log --format=%s ${PREV_TAG:+"$PREV_TAG"..HEAD} | grep -v '^release: ' > "$NOTES" || true
 python3 scripts/appcast-add.py "$VERSION" "$BUILD_NUMBER" \
   "https://github.com/danzerzine/Speak/releases/download/$TAG/Speak-$VERSION.dmg" \
   "$SIGNED" "$NOTES"
@@ -111,7 +136,7 @@ git push origin "$TAG"
 cp "$DMG" dist/Speak.dmg
 gh release create "$TAG" "$DMG" dist/Speak.dmg --repo danzerzine/Speak \
   --title "Speak! $VERSION" \
-  --generate-notes
+  --notes-file <(sed 's/^/- /' "$NOTES")
 git push origin main
 
 echo

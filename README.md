@@ -66,7 +66,7 @@ Presses shorter than 150 ms are ignored, and so is a hold during which you press
 
 | Engine | Where it runs | Size | Good for |
 |---|---|---|---|
-| **Parakeet Ultra** (default) | On your Mac | 610 MB | Speed. Russian, English and 23 more languages, offline |
+| **Parakeet Ultra** (default) | On your Mac | 610 MB | Speed. Russian and English, offline |
 | Whisper Tiny / Small / Turbo | On your Mac | 75 MB – 1.5 GB | Languages Parakeet lacks; Turbo for the best Whisper quality |
 | Gemini 3.5 Transcribe / Flash-Lite | Google cloud, your API key | — | Heavily mixed-language speech |
 
@@ -76,7 +76,7 @@ Switch engines in Settings → Recognition. Whisper models already downloaded by
 
 ## Dictionary
 
-Speech models know everyday words and stumble on IT terms: `пулл реквест` instead of *pull request*, `кубернетес` instead of *Kubernetes*. The dictionary maps what was heard to what you meant, per language, and fixes the text before it is typed. It ships with about 110 terms for Russian, 120 for English and 130 for Ukrainian, covering git, languages, frontend, backend, data, DevOps, cloud and AI tools.
+Speech models know everyday words and stumble on IT terms: `пулл реквест` instead of *pull request*, `кубернетес` instead of *Kubernetes*. The dictionary maps what was heard to what you meant, per language, and fixes the text before it is typed. It ships with about 110 terms for Russian and 120 for English, covering git, languages, frontend, backend, data, DevOps, cloud and AI tools.
 
 With Parakeet the dictionary also works by sound: a small extra model (98 MB) catches words that *sound like* one of your terms, so `пул реквист` still becomes *pull request* even if that exact misspelling isn't in the list.
 
