@@ -94,7 +94,7 @@ git push origin main
 git push origin "$TAG"
 
 # GitHub release
-gh release create "$TAG" "$DMG" \
+gh release create "$TAG" "$DMG" --repo danzerzine/Speak \
   --title "Speak! $VERSION" \
   --generate-notes
 
