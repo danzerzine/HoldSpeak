@@ -37,8 +37,11 @@ openssl req -x509 -newkey rsa:2048 -nodes -keyout cert.key -out cert.crt \
 openssl pkcs12 -export -legacy -inkey cert.key -in cert.crt -out cert.p12 \
   -name "$CERT_NAME" -password pass:ptt
 
+# Only codesign may use the key. Never -A ("any application"): macOS knows the app
+# by this certificate, so any program holding the key could sign itself as Speak!
+# and inherit its microphone and Accessibility permissions.
 security import cert.p12 -k ~/Library/Keychains/login.keychain-db \
-  -P "ptt" -T /usr/bin/codesign -A >/dev/null
+  -P "ptt" -T /usr/bin/codesign >/dev/null
 
 # Trust for code signing
 security add-trusted-cert -d -r trustRoot -k ~/Library/Keychains/login.keychain-db \

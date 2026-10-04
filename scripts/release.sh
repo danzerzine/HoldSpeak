@@ -48,11 +48,19 @@ APP_SRC="build/Build/Products/Release/Speak.app"
 mkdir -p dist
 cp -R "$APP_SRC" "dist/Speak.app"
 
+# Hardened Runtime (no DYLD_* injection into a process holding microphone and
+# Accessibility) plus the app's entitlements, which a plain re-sign would drop:
+# under Hardened Runtime the microphone needs com.apple.security.device.audio-input.
+sign_app() {
+  codesign --force --deep --options runtime --sign "$1" "$2"
+  codesign --force --options runtime --entitlements Resources/HoldSpeak.entitlements --sign "$1" "$2"
+}
+
 IDENTITY="HoldSpeak Dev (self-signed)"
 if security find-identity -v -p codesigning login.keychain-db 2>/dev/null | grep -q "$IDENTITY"; then
-  codesign --force --deep --sign "$IDENTITY" "dist/Speak.app"
+  sign_app "$IDENTITY" "dist/Speak.app"
 else
-  codesign --force --deep --sign - "dist/Speak.app"
+  sign_app - "dist/Speak.app"
 fi
 
 # Build DMG

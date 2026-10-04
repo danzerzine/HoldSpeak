@@ -33,12 +33,20 @@ cp -R "$APP_SRC" "$APP_DST"
 
 # Sign with persistent self-signed identity so TCC grants survive rebuilds.
 # Falls back to ad-hoc if the cert isn't installed.
+# Hardened Runtime (no DYLD_* injection into a process holding microphone and
+# Accessibility) plus the app's entitlements, which a plain re-sign would drop:
+# under Hardened Runtime the microphone needs com.apple.security.device.audio-input.
+sign_app() {
+  codesign --force --deep --options runtime --sign "$1" "$2"
+  codesign --force --options runtime --entitlements Resources/HoldSpeak.entitlements --sign "$1" "$2"
+}
+
 IDENTITY="HoldSpeak Dev (self-signed)"
 if security find-identity -v -p codesigning login.keychain-db 2>/dev/null | grep -q "$IDENTITY"; then
-  codesign --force --deep --sign "$IDENTITY" "$APP_DST"
+  sign_app "$IDENTITY" "$APP_DST"
 else
   echo "Note: run scripts/setup-signing.sh once for persistent TCC grants."
-  codesign --force --deep --sign - "$APP_DST"
+  sign_app - "$APP_DST"
 fi
 
 echo "Installed to $APP_DST"
