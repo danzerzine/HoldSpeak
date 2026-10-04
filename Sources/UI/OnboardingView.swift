@@ -12,6 +12,9 @@ struct OnboardingView: View {
     @State private var tryText = ""
     @FocusState private var tryFocused: Bool
     @State private var holding = false
+    /// Snapshot runs only: permissions to draw instead of the live ones.
+    private let previewPermissions: Permissions?
+    private var perms: Permissions { previewPermissions ?? status.permissions }
 
     /// Called when the user confirms an engine (a Gemini key is already saved by then).
     var onEngineChosen: (TranscriptionEngineKind) -> Void
@@ -24,6 +27,8 @@ struct OnboardingView: View {
     init(modelsVM: ModelsViewModel,
          needsEngine: Bool,
          initialStep: Step? = nil,
+         initialChoice: TranscriptionEngineKind? = nil,
+         previewPermissions: Permissions? = nil,
          onEngineChosen: @escaping (TranscriptionEngineKind) -> Void,
          onTryPress: @escaping () -> Void,
          onTryRelease: @escaping () -> Void,
@@ -35,7 +40,8 @@ struct OnboardingView: View {
         self.onDone = onDone
         // After a reinstall or rename only the permissions are missing: start there.
         _step = State(initialValue: initialStep ?? (needsEngine ? .welcome : .permissions))
-        _choice = State(initialValue: needsEngine ? .whisper : PreferencesStore.shared.engine)
+        _choice = State(initialValue: initialChoice ?? (needsEngine ? .whisper : PreferencesStore.shared.engine))
+        self.previewPermissions = previewPermissions
     }
 
     var body: some View {
@@ -118,7 +124,7 @@ struct OnboardingView: View {
                     "macOS asks once for each. Speak! notices the change on its own.")
             Form {
                 permissionRow("Microphone", "To hear you while you hold the key",
-                              granted: status.permissions.microphone, button: "Allow…") {
+                              granted: perms.microphone, button: "Allow…") {
                     Task {
                         if await !PermissionsManager.shared.requestMicrophone() {
                             PermissionsManager.shared.openMicrophoneSettings()
@@ -127,11 +133,11 @@ struct OnboardingView: View {
                     }
                 }
                 permissionRow("Accessibility", "To type the text into the app you’re using",
-                              granted: status.permissions.accessibility, button: "Open Settings…") {
+                              granted: perms.accessibility, button: "Open Settings…") {
                     PermissionsManager.shared.openAccessibilitySettings()
                 }
                 permissionRow("Input Monitoring", "To notice when you hold \(EngineText.hotkey(prefs))",
-                              granted: status.permissions.inputMonitoring, button: "Open Settings…") {
+                              granted: perms.inputMonitoring, button: "Open Settings…") {
                     PermissionsManager.shared.openInputMonitoringSettings()
                     status.refreshPermissions()
                 }
@@ -141,6 +147,12 @@ struct OnboardingView: View {
             .frame(height: 190)
             .padding(.horizontal, -20)
             .padding(.top, 8)
+            if !requiredAllowed {
+                Text("Microphone and Accessibility are needed to continue. Input Monitoring can wait.")
+                    .font(DS.callout)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, DS.s1)
+            }
             if modelsVM.downloading {
                 HStack(spacing: 10) {
                     Text("Downloading \(EngineText.modelName(prefs)) — \(Int(modelsVM.progress * 100))%")
@@ -149,7 +161,7 @@ struct OnboardingView: View {
                         .monospacedDigit()
                     ProgressView(value: modelsVM.progress)
                 }
-                .padding(.top, DS.s1)
+                .padding(.top, DS.s3)
             }
         }
         .onAppear { status.refreshPermissions() }
@@ -216,7 +228,7 @@ struct OnboardingView: View {
                 .font(DS.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-                .frame(maxWidth: 380)
+                .frame(maxWidth: 410)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.top, 14)
@@ -248,6 +260,13 @@ struct OnboardingView: View {
                 .opacity(step == .welcome ? 0 : 1)
                 .disabled(step == .welcome)
             Spacer()
+            Button(step == .tryIt ? "Done" : "Continue", action: next)
+                .keyboardShortcut(.defaultAction)
+                .dsProminent()
+                .disabled(!canContinue)
+        }
+        // Centred on the window, not between buttons of different widths.
+        .overlay {
             HStack(spacing: 6) {
                 ForEach(Step.allCases, id: \.self) { s in
                     Circle()
@@ -257,11 +276,6 @@ struct OnboardingView: View {
             }
             .accessibilityElement()
             .accessibilityLabel("Step \(step.rawValue + 1) of \(Step.allCases.count)")
-            Spacer()
-            Button(step == .tryIt ? "Done" : "Continue", action: next)
-                .keyboardShortcut(.defaultAction)
-                .dsProminent()
-                .disabled(!canContinue)
         }
         .padding(.horizontal, DS.s5)
         .padding(.vertical, DS.s4)
@@ -271,10 +285,12 @@ struct OnboardingView: View {
         switch step {
         case .welcome:     return true
         case .engine:      return choice == .whisper || prefs.hasGeminiKey
-        case .permissions: return status.permissions.microphone && status.permissions.accessibility
+        case .permissions: return requiredAllowed
         case .tryIt:       return true
         }
     }
+
+    private var requiredAllowed: Bool { perms.microphone && perms.accessibility }
 
     private func next() {
         switch step {

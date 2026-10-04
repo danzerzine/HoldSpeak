@@ -64,10 +64,25 @@ enum SnapshotRunner {
                                                 onEngineChosen: { _ in }, onTryPress: {}, onTryRelease: {}, onDone: {})),
                          NSSize(width: 600, height: 470), {}))
         }
+        jobs.append(("onboarding-1-gemini",
+                     AnyView(OnboardingView(modelsVM: modelsVM, needsEngine: true, initialStep: .engine, initialChoice: .gemini,
+                                            onEngineChosen: { _ in }, onTryPress: {}, onTryRelease: {}, onDone: {})),
+                     NSSize(width: 600, height: 470), {}))
+        let wasDownloading = modelsVM.downloading
+        jobs.append(("onboarding-2-missing",
+                     AnyView(OnboardingView(modelsVM: modelsVM, needsEngine: true, initialStep: .permissions,
+                                            previewPermissions: Permissions(microphone: true, accessibility: false,
+                                                                            inputMonitoring: false, documentsAccess: false),
+                                            onEngineChosen: { _ in }, onTryPress: {}, onTryRelease: {}, onDone: {})),
+                     NSSize(width: 600, height: 470), {
+                         modelsVM.downloading = true
+                         modelsVM.progress = 0.34
+                     }))
 
         func next(_ i: Int) {
             guard i < jobs.count else {
                 prefs.pillColor = savedPill
+                modelsVM.downloading = wasDownloading
                 pttLog("snapshot: wrote \(jobs.count) images to \(dir)")
                 NSApp.terminate(nil)
                 return
