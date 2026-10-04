@@ -53,13 +53,11 @@ public final class TerminologyStore: ObservableObject {
     }
 
     public nonisolated static func defaultDirectory() -> URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return base.appendingPathComponent("HoldSpeak/terminology")
+        AppPaths.support.appendingPathComponent("terminology")
     }
 
     public nonisolated static func legacyFlatFile() -> URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return base.appendingPathComponent("HoldSpeak/terminology.json")
+        AppPaths.support.appendingPathComponent("terminology.json")
     }
 
     // MARK: - Bootstrap

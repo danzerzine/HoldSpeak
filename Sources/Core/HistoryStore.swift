@@ -54,8 +54,7 @@ public final class HistoryStore: HistoryStoring {
     }
 
     public static func defaultURL() -> URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return base.appendingPathComponent("HoldSpeak/history.sqlite")
+        AppPaths.support.appendingPathComponent("history.sqlite")
     }
 
     private func migrate() throws {

@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>HoldSpeak</string>
+	<string>Speak!</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIconFile</key>
@@ -17,7 +17,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>HoldSpeak</string>
+	<string>Speak</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -29,19 +29,19 @@
 	<key>NSHumanReadableCopyright</key>
 	<string></string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>HoldSpeak records your speech while you hold the hotkey and turns it into text.</string>
+	<string>Speak! records your speech while you hold the hotkey and turns it into text.</string>
 	<key>NSServices</key>
 	<array>
 		<dict>
 			<key>NSMenuItem</key>
 			<dict>
 				<key>default</key>
-				<string>Fix Spelling in HoldSpeak</string>
+				<string>Fix Spelling in Speak!</string>
 			</dict>
 			<key>NSMessage</key>
 			<string>fixSpelling</string>
 			<key>NSPortName</key>
-			<string>HoldSpeak</string>
+			<string>Speak</string>
 			<key>NSRequiredContext</key>
 			<dict/>
 			<key>NSSendTypes</key>

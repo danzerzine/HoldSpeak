@@ -9,4 +9,5 @@ build/
 dist/
 *.dmg
 HoldSpeak.xcodeproj/
+Speak.xcodeproj/
 docs/superpowers/

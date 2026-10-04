@@ -36,33 +36,34 @@ BUILD_NUMBER="$(git rev-list --count HEAD)"
 
 xcodegen generate >/dev/null
 
+pkill -x Speak 2>/dev/null || true
 pkill -x HoldSpeak 2>/dev/null || true
 chmod -R u+w build dist 2>/dev/null || true
 rm -rf build dist 2>/dev/null || true
 mkdir -p build dist
-xcodebuild -scheme HoldSpeak -configuration Release \
+xcodebuild -scheme Speak -configuration Release \
   -derivedDataPath build clean build 2>&1 | tail -5
 
-APP_SRC="build/Build/Products/Release/HoldSpeak.app"
+APP_SRC="build/Build/Products/Release/Speak.app"
 mkdir -p dist
-cp -R "$APP_SRC" "dist/HoldSpeak.app"
+cp -R "$APP_SRC" "dist/Speak.app"
 
 IDENTITY="HoldSpeak Dev (self-signed)"
 if security find-identity -v -p codesigning login.keychain-db 2>/dev/null | grep -q "$IDENTITY"; then
-  codesign --force --deep --sign "$IDENTITY" "dist/HoldSpeak.app"
+  codesign --force --deep --sign "$IDENTITY" "dist/Speak.app"
 else
-  codesign --force --deep --sign - "dist/HoldSpeak.app"
+  codesign --force --deep --sign - "dist/Speak.app"
 fi
 
 # Build DMG
 STAGING="dist/dmg-staging"
 rm -rf "$STAGING"
 mkdir -p "$STAGING"
-cp -R "dist/HoldSpeak.app" "$STAGING/"
+cp -R "dist/Speak.app" "$STAGING/"
 ln -s /Applications "$STAGING/Applications"
 
-DMG="dist/HoldSpeak-$VERSION.dmg"
-hdiutil create -volname "HoldSpeak $VERSION" \
+DMG="dist/Speak-$VERSION.dmg"
+hdiutil create -volname "Speak $VERSION" \
   -srcfolder "$STAGING" \
   -ov -format UDZO "$DMG"
 
@@ -86,14 +87,14 @@ git push origin "$TAG"
 
 # GitHub release
 gh release create "$TAG" "$DMG" \
-  --title "HoldSpeak $VERSION" \
+  --title "Speak! $VERSION" \
   --generate-notes
 
 echo
 echo "Released $TAG"
 echo "DMG: $DMG"
 
-# Relaunch the installed app so the user isn't left without HoldSpeak running
-if [[ -d /Applications/HoldSpeak.app ]]; then
-  open /Applications/HoldSpeak.app
+# Relaunch the installed app so the user isn't left without Speak! running
+if [[ -d /Applications/Speak.app ]]; then
+  open /Applications/Speak.app
 fi

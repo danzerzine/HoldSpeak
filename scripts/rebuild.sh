@@ -7,22 +7,28 @@ if command -v xcodegen >/dev/null 2>&1; then
   xcodegen generate >/dev/null
 fi
 
-# Kill running instance
-pkill -x HoldSpeak 2>/dev/null || true
-
-# Build. Release keeps dictated text out of HoldSpeak.log (only its length is
+# Build. Release keeps dictated text out of Speak.log (only its length is
 # logged); CONFIG=Debug ./scripts/rebuild.sh logs the text for debugging. -O makes
 # FluidAudio's term rescoring ~5x faster (≈60 ms instead of ≈290 ms per phrase).
+# Background priority and half the cores keep the Mac usable while it builds;
+# incremental, so the packages compile once. CLEAN=1 forces a full rebuild.
 CONFIG="${CONFIG:-Release}"
-xcodebuild -scheme HoldSpeak -configuration "$CONFIG" \
-  -derivedDataPath build \
+JOBS=$(( $(sysctl -n hw.ncpu) / 2 ))
+ACTIONS="build"
+if [[ -n "${CLEAN:-}" ]]; then ACTIONS="clean build"; fi
+taskpolicy -b xcodebuild -project Speak.xcodeproj -scheme Speak -configuration "$CONFIG" \
+  -derivedDataPath build -jobs "$JOBS" \
   SWIFT_OPTIMIZATION_LEVEL=-O \
-  clean build 2>&1 | tail -5
+  $ACTIONS 2>&1 | tail -5
 
-APP_SRC="build/Build/Products/$CONFIG/HoldSpeak.app"
-APP_DST="/Applications/HoldSpeak.app"
+# Quit the running app only after a successful build (HoldSpeak is the name before Speak!).
+pkill -x Speak 2>/dev/null || true
+pkill -x HoldSpeak 2>/dev/null || true
 
-rm -rf "$APP_DST"
+APP_SRC="build/Build/Products/$CONFIG/Speak.app"
+APP_DST="/Applications/Speak.app"
+
+rm -rf "$APP_DST" /Applications/HoldSpeak.app
 cp -R "$APP_SRC" "$APP_DST"
 
 # Sign with persistent self-signed identity so TCC grants survive rebuilds.

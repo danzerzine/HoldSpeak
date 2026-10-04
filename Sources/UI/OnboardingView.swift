@@ -37,7 +37,7 @@ struct OnboardingView: View {
 
     private var engineStep: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("How should HoldSpeak recognize speech?")
+            Text("How should Speak! recognize speech?")
                 .font(.title2).bold()
             engineCard(.whisper,
                        title: "On this Mac — \(prefs.modelID.isParakeet ? "Parakeet" : "Whisper")",
@@ -103,7 +103,7 @@ struct OnboardingView: View {
 
     private var permissionsStep: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("HoldSpeak needs a few permissions")
+            Text("Speak! needs a few permissions")
                 .font(.title2).bold()
             row("Microphone", ok: perms.microphone) {
                 Task {

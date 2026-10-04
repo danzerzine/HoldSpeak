@@ -1,6 +1,6 @@
-name: HoldSpeak
+name: Speak
 options:
-  bundleIdPrefix: com.timmal
+  bundleIdPrefix: com.danzerzine
   deploymentTarget:
     macOS: "14.0"
   createIntermediateGroups: true
@@ -35,7 +35,7 @@ settings:
       CODE_SIGNING_ALLOWED: YES
 
 targets:
-  HoldSpeak:
+  Speak:
     type: application
     platform: macOS
     deploymentTarget: "14.0"
@@ -70,20 +70,20 @@ targets:
       path: Resources/Info.plist
       properties:
         LSUIElement: true
-        CFBundleDisplayName: HoldSpeak
-        CFBundleName: HoldSpeak
+        CFBundleDisplayName: "Speak!"
+        CFBundleName: Speak
         CFBundleIconFile: AppIcon
         CFBundleIconName: AppIcon
         CFBundleShortVersionString: "0.3.1"
         CFBundleVersion: "1"
-        NSMicrophoneUsageDescription: HoldSpeak records your speech while you hold the hotkey and turns it into text.
+        NSMicrophoneUsageDescription: Speak! records your speech while you hold the hotkey and turns it into text.
         NSHumanReadableCopyright: ""
         # Right-click a misheard word anywhere: opens Terms with it typed in.
         NSServices:
           - NSMenuItem:
-              default: Fix Spelling in HoldSpeak
+              default: "Fix Spelling in Speak!"
             NSMessage: fixSpelling
-            NSPortName: HoldSpeak
+            NSPortName: Speak
             NSSendTypes: [NSStringPboardType, public.utf8-plain-text]
             NSRequiredContext: {}
     entitlements:
@@ -93,7 +93,7 @@ targets:
         com.apple.security.device.audio-input: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.timmal.push-to-talk
+        PRODUCT_BUNDLE_IDENTIFIER: com.danzerzine.speak
         SWIFT_OBJC_BRIDGING_HEADER: Sources/App/HoldSpeak-Bridging-Header.h
         MARKETING_VERSION: "0.3.1"
         CURRENT_PROJECT_VERSION: "1"

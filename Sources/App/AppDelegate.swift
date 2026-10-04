@@ -1,6 +1,7 @@
 import AppKit
 import AVFoundation
 import Combine
+import ServiceManagement
 import SwiftUI
 @preconcurrency import UserNotifications
 
@@ -27,7 +28,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hudGeneration = 0
 
     /// Developer check: HOLDSPEAK_CHECK_FILES=a.wav:b.wav transcribes the files with
-    /// Parakeet into HoldSpeak.log and quits; no menu bar item, hotkey or UI.
+    /// Parakeet into Speak.log and quits; no menu bar item, hotkey or UI.
     private func runFileCheck(_ paths: [String]) {
         Task { @MainActor in
             do {
@@ -44,8 +45,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        Self.migrateFromHoldSpeak()
         PreferencesStore.shared.applyAppearance()
-        Self.migrateLegacyAppSupportDirectory()
 
         do {
             store = try HistoryStore(url: HistoryStore.defaultURL())
@@ -171,7 +172,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// "Fix Spelling in HoldSpeak" service (NSServices in Info.plist): the selected
+    /// "Fix Spelling in Speak!" service (NSServices in Info.plist): the selected
     /// text becomes the wrong spelling on the Terms tab, ready for the right one.
     @objc func fixSpelling(_ pboard: NSPasteboard, userData: String?,
                            error: AutoreleasingUnsafeMutablePointer<NSString?>) {
@@ -376,18 +377,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private static func migrateLegacyAppSupportDirectory() {
-        let fm = FileManager.default
-        let base = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        let legacy = base.appendingPathComponent("push-to-talk")
-        let target = base.appendingPathComponent("HoldSpeak")
-        guard fm.fileExists(atPath: legacy.path),
-              !fm.fileExists(atPath: target.path) else { return }
+    /// First launch as Speak!: settings, files and the login item come over from
+    /// HoldSpeak (a different bundle id, so macOS asks for permissions again).
+    private static func migrateFromHoldSpeak() {
         do {
-            try fm.moveItem(at: legacy, to: target)
-            pttLog("Migrated Application Support: push-to-talk → HoldSpeak")
+            if let from = try AppPaths.migrateSupportDirectory() {
+                pttLog("Migrated Application Support: \(from) → Speak")
+            }
         } catch {
-            pttLog("Migration failed: \(error)")
+            pttLog("Application Support migration failed: \(error)")
+        }
+        let copied = AppPaths.migrateDefaults(from: AppPaths.previousDefaults(), into: .standard)
+        guard copied else { return }
+        pttLog("Migrated settings from \(AppPaths.previousBundleID)")
+        if UserDefaults.standard.bool(forKey: "launchAtLogin") {
+            do { try SMAppService.mainApp.register() } catch {
+                pttLog("Launch at login re-register failed: \(error)")
+            }
         }
     }
 

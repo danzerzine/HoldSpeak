@@ -6,7 +6,7 @@ import ServiceManagement
 final class ModelsViewModel: ObservableObject {
     @Published var downloading = false
     @Published var progress: Double = 0
-    /// Disk used by models HoldSpeak downloaded itself (not other apps' copies).
+    /// Disk used by models the app downloaded itself (not other apps' copies).
     @Published var managedBytes: Int64 = 0
     /// Called on main after a successful download, so the engine can load the model.
     var onDownloaded: ((WhisperModelID) -> Void)?
@@ -320,7 +320,7 @@ struct PreferencesView: View {
         let size = ByteCountFormatter.string(fromByteCount: modelsVM.managedBytes, countStyle: .file)
         let alert = NSAlert()
         alert.messageText = "Delete downloaded Whisper models?"
-        alert.informativeText = "Frees \(size). Only models HoldSpeak downloaded are removed — copies from MacWhisper or other apps stay. You can download a model again at any time."
+        alert.informativeText = "Frees \(size). Only models Speak! downloaded are removed — copies from MacWhisper or other apps stay. You can download a model again at any time."
         alert.addButton(withTitle: "Delete")
         alert.addButton(withTitle: "Cancel")
         if alert.runModal() == .alertFirstButtonReturn {
@@ -590,7 +590,7 @@ final class PreferencesWindowController: NSWindowController {
         // The SwiftUI minimum (560×428) becomes the window's; the user can grow it.
         host.sizingOptions = [.minSize]
         let win = NSWindow(contentViewController: host)
-        win.title = "HoldSpeak Preferences"
+        win.title = "Speak! Preferences"
         win.styleMask = [.titled, .closable, .resizable, .fullSizeContentView]
         win.setContentSize(NSSize(width: 560, height: 428))
         win.titlebarAppearsTransparent = true

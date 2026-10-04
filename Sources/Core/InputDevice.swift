@@ -1,7 +1,7 @@
 import CoreAudio
 import Foundation
 
-/// Which microphone HoldSpeak records from. Persisted as `rawValue`.
+/// Which microphone the app records from. Persisted as `rawValue`.
 public enum InputSelection: Equatable, Hashable {
     /// Whatever macOS has selected as the input device.
     case systemDefault

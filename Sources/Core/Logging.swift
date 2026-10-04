@@ -3,12 +3,12 @@ import Foundation
 /// Serialises all file writes. pttLog is called from the audio tap thread,
 /// the main thread and background tasks, so the handle is only ever touched here.
 private let logQueue = DispatchQueue(label: "com.timmal.holdspeak.log", qos: .utility)
-private let logPath = ("~/Library/Logs/HoldSpeak.log" as NSString).expandingTildeInPath
+private let logPath = AppPaths.logFile
 private let logMaxBytes: UInt64 = 2 * 1024 * 1024
 /// Opened lazily on logQueue; nil until the first write (or after a failed open).
 private var logHandle: FileHandle?
 
-/// Writes to HoldSpeak.log only, not the system log, which keeps entries far longer.
+/// Writes to Speak.log only, not the system log, which keeps entries far longer.
 public func pttLog(_ msg: String) {
     let line = "\(Date()) \(msg)\n"
     logQueue.async {
@@ -33,7 +33,7 @@ private func openLogHandle() -> FileHandle? {
     return fh
 }
 
-/// Moves the current log to HoldSpeak.log.1 (replacing any previous one);
+/// Moves the current log to Speak.log.1 (replacing any previous one);
 /// the next write starts a fresh file. Must be called on logQueue.
 private func rotateLog() {
     try? logHandle?.close()

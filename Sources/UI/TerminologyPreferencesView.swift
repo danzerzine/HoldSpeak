@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
 
-/// The wrong spelling waiting to be fixed: filled by the "Fix in HoldSpeak"
+/// The wrong spelling waiting to be fixed: filled by the "Fix Spelling in Speak!"
 /// service so the Terms tab opens with it already typed in.
 @MainActor
 final class CorrectionDraft: ObservableObject {
@@ -380,7 +380,7 @@ struct TerminologyPreferencesView: View {
             entries = try JSONDecoder().decode([TerminologyEntry].self, from: Data(contentsOf: url))
         } catch {
             showError("Couldn't read \(url.lastPathComponent)",
-                      "It isn't a HoldSpeak dictionary export. (\(error.localizedDescription))")
+                      "It isn't a Speak! dictionary export. (\(error.localizedDescription))")
             return
         }
         let alert = NSAlert()

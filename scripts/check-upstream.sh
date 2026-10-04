@@ -5,7 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-STATE="$HOME/Library/Application Support/HoldSpeak/upstream-last-seen"
+STATE="$HOME/Library/Application Support/Speak/upstream-last-seen"
 git fetch -q upstream
 
 tip=$(git rev-parse upstream/main)
@@ -19,7 +19,7 @@ git log --oneline "$seen..$tip"
 
 # Pass text as arguments so quotes in commit subjects can't break the AppleScript.
 osascript -e 'on run argv' \
-  -e 'display notification (item 2 of argv) with title "HoldSpeak upstream" subtitle (item 1 of argv)' \
+  -e 'display notification (item 2 of argv) with title "Speak! upstream" subtitle (item 1 of argv)' \
   -e 'end run' "$count new commit(s) from timmal" "Latest: $latest"
 
 mkdir -p "$(dirname "$STATE")"

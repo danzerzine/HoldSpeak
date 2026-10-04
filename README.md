@@ -1,18 +1,18 @@
 <p align="center">
-  <img src="docs/screenshots/logo.webp" width="180" alt="HoldSpeak logo" />
+  <img src="docs/screenshots/logo.webp" width="180" alt="Speak! logo" />
 </p>
 
-# HoldSpeak
+# Speak!
 
-A fork of [timmal/HoldSpeak](https://github.com/timmal/HoldSpeak) with a Parakeet engine, a correction dictionary you can fill from any app, and other changes. [Download](https://github.com/danzerzine/HoldSpeak/releases/latest)
+Formerly HoldSpeak. A fork of [timmal/HoldSpeak](https://github.com/timmal/HoldSpeak) with a Parakeet engine, a correction dictionary you can fill from any app, and other changes. [Download](https://github.com/danzerzine/HoldSpeak/releases/latest)
 
-Local push-to-talk dictation for macOS. HoldSpeak is a **menu bar app** (no Dock icon, no windows in the way) — it lives in the status bar and stays out of your workflow until you hold the hotkey. Speak, release — recognized text is inserted into the focused input. Local by default: Whisper runs on GPU via WhisperKit. Optionally, you can switch to Google Gemini with your own API key.
+Local push-to-talk dictation for macOS. Speak! is a **menu bar app** (no Dock icon, no windows in the way) — it lives in the status bar and stays out of your workflow until you hold the hotkey. Speak, release — recognized text is inserted into the focused input. Local by default: Whisper runs on GPU via WhisperKit. Optionally, you can switch to Google Gemini with your own API key.
 
 <p align="center">
   <img src="docs/screenshots/popover.webp?v=4" width="360" alt="Menu bar popover" />
 </p>
 
-A free, local alternative to paid Whisper wrappers. Built for one reason: talking to AI is faster than typing to it. Average typing speed hovers around 40–60 wpm; comfortable speech is 130–160 wpm — two to three times faster. As more of the dev loop moves into prompts to AI agents, raw typing throughput becomes a real ceiling on how quickly you can iterate. HoldSpeak lifts it: hold the hotkey, speak a full thought, release, it lands in the input.
+A free, local alternative to paid Whisper wrappers. Built for one reason: talking to AI is faster than typing to it. Average typing speed hovers around 40–60 wpm; comfortable speech is 130–160 wpm — two to three times faster. As more of the dev loop moves into prompts to AI agents, raw typing throughput becomes a real ceiling on how quickly you can iterate. Speak! lifts it: hold the hotkey, speak a full thought, release, it lands in the input.
 
 ## Features
 
@@ -28,9 +28,9 @@ A free, local alternative to paid Whisper wrappers. Built for one reason: talkin
 
 ## Install
 
-Grab the latest DMG from the [Releases page](https://github.com/danzerzine/HoldSpeak/releases/latest), open it, and drag `HoldSpeak.app` into `Applications`.
+Grab the latest DMG from the [Releases page](https://github.com/danzerzine/HoldSpeak/releases/latest), open it, and drag `Speak.app` into `Applications`.
 
-Because the app is self-signed, macOS will block the first launch. Open **System Settings → Privacy & Security**, scroll to the message *"HoldSpeak was blocked…"* and click **Open Anyway**. Confirm with Touch ID / password. After that it launches normally from Launchpad / Applications. The app runs as a menu bar extra — look for the radio icon in the right side of your menu bar; it won't appear in the Dock or Cmd-Tab.
+Because the app is self-signed, macOS will block the first launch. Open **System Settings → Privacy & Security**, scroll to the message *"Speak was blocked…"* and click **Open Anyway**. Confirm with Touch ID / password. After that it launches normally from Launchpad / Applications. The app runs as a menu bar extra — look for the radio icon in the right side of your menu bar; it won't appear in the Dock or Cmd-Tab.
 
 On first launch, choose how speech is recognized — **on this Mac** (downloads Parakeet Ultra, ~610 MB) or **Gemini** (Google cloud, asks for your API key) — and the language you mostly dictate in (it starts on your system language), then grant three permissions:
 
@@ -49,26 +49,28 @@ The onboarding window has Open… and Re-check buttons.
 The app checks GitHub for new versions in the background and shows an **Update available** banner in the menu bar popover. You can also trigger a check manually via Preferences → General → **Check for updates**.
 
 1. Click **Download** in the banner — it opens the latest release on GitHub.
-2. Download the `.dmg`, open it, and drag `HoldSpeak.app` into `Applications`. macOS will ask to replace the old copy — confirm.
+2. Download the `.dmg`, open it, and drag `Speak.app` into `Applications`. macOS will ask to replace the old copy — confirm.
 3. Quit the running app from the menu bar (Quit), then launch the new one from `Applications`.
 
-Your preferences, history, and downloaded models live in `~/Library/Application Support/HoldSpeak/` and are preserved across updates.
+Your preferences, history, and downloaded models live in `~/Library/Application Support/Speak/` and are preserved across updates.
+
+**Coming from HoldSpeak.** Speak! is the same app under a new name and bundle id. On first launch it moves your models, history and dictionaries from `Application Support/HoldSpeak` and copies your preferences. macOS treats it as a new app, though: grant Microphone, Accessibility and Input Monitoring once more (the welcome window opens on that step), allow Keychain access to the Gemini key when asked, and delete `HoldSpeak.app` from `Applications`.
 
 ### Model
 
 The default is **Parakeet Ultra (~610 MB)** — fast and accurate for Russian and English. You can switch to a Whisper model (Tiny, Small, Turbo) in Preferences → Audio; installs that were on Turbo stay on it after an update.
 
-If you already have MacWhisper / another WhisperKit client installed, their models will be picked up automatically. Otherwise the first model is downloaded to `~/Library/Application Support/HoldSpeak/models/`.
+If you already have MacWhisper / another WhisperKit client installed, their models will be picked up automatically. Otherwise the first model is downloaded to `~/Library/Application Support/Speak/models/`.
 
-To free disk space, Preferences → Audio → **Downloaded models → Delete…** removes every model HoldSpeak downloaded. Models that belong to MacWhisper or other apps are left alone.
+To free disk space, Preferences → Audio → **Downloaded models → Delete…** removes every model Speak! downloaded. Models that belong to MacWhisper or other apps are left alone.
 
 ### Gemini (optional, cloud)
 
 Pick a Gemini model in Preferences → Audio → **Model** (or choose Gemini during onboarding) and paste an API key:
 
 1. Create a key at [Google AI Studio → API keys](https://aistudio.google.com/apikey).
-2. **Set up billing** for the key's project in AI Studio. Without billing the key runs on the free tier, which stops after a couple dozen dictations a day — HoldSpeak then shows *"Gemini daily limit reached — set up billing"* in the HUD.
-3. Paste the key in HoldSpeak and click **Save**. The key is checked with Google and stored in the macOS Keychain, never in preferences files; it survives app updates. After each update macOS asks once to let the new version read the key — enter your Mac password and click **Always Allow** (HoldSpeak is self-signed, so the Keychain sees every new build as a new app).
+2. **Set up billing** for the key's project in AI Studio. Without billing the key runs on the free tier, which stops after a couple dozen dictations a day — Speak! then shows *"Gemini daily limit reached — set up billing"* in the HUD.
+3. Paste the key in Speak! and click **Save**. The key is checked with Google and stored in the macOS Keychain, never in preferences files; it survives app updates. After each update macOS asks once to let the new version read the key — enter your Mac password and click **Always Allow** (Speak! is self-signed, so the Keychain sees every new build as a new app).
 
 <p align="center">
   <img src="docs/screenshots/preferences-audio-gemini.webp?v=4" width="560" alt="Preferences · Audio with Gemini selected" />
@@ -140,7 +142,7 @@ Whisper reliably recognizes common speech but routinely mangles IT terminology i
 
 With Parakeet the dictionary also works by sound. A small keyword model (parakeet-ctc-110m, ~98 MB, downloaded the first time Parakeet loads) listens for words that sound like a term with a Latin spelling and swaps that spelling in, so `пул реквист` and `Basicampi` come out as `pull request` and `Basecamp` even when that exact misspelling is not in your list. It adds about 60–80 ms per phrase. Whisper is not affected.
 
-> **Tip.** If Whisper keeps mangling the same word or name — a project codename, a library you use daily, a colleague's surname — stop fighting the model. Select the wrong word right where it was inserted, right-click it and pick **Fix Spelling in HoldSpeak**, then type the correct spelling and press Return. Next time the word shows up it'll come out right without any hand-editing. That's the whole point of this feature: if you have to fix the transcript by hand every time, it's not dictation — it's a slower way to type. Teach the app once, save the corrections forever.
+> **Tip.** If Whisper keeps mangling the same word or name — a project codename, a library you use daily, a colleague's surname — stop fighting the model. Select the wrong word right where it was inserted, right-click it and pick **Fix Spelling in Speak!**, then type the correct spelling and press Return. Next time the word shows up it'll come out right without any hand-editing. That's the whole point of this feature: if you have to fix the transcript by hand every time, it's not dictation — it's a slower way to type. Teach the app once, save the corrections forever.
 
 <p align="center">
   <img src="docs/screenshots/preferences-terms.webp?v=4" width="560" alt="Preferences · Terms" />
@@ -157,13 +159,13 @@ With Parakeet the dictionary also works by sound. A small keyword model (parakee
 
 **Adding your own terms.** The top of the Terms tab is one row: **Transcribed as** → **Should be**. Type what came out (`бойскап`), press Return, type what it should be (`Basecamp`), press Return again. If `Basecamp` is already in the list, the new spelling joins it; otherwise a new term starts. A spelling belongs to one term only, so adding it moves it from any other term. The list reads the same way: `бойскап, бейскэмп → Basecamp`. The pencil opens the full editor for a term (all spellings, one per line, and a case-sensitive switch). Matching is case-insensitive by default and respects word boundaries, so `пулреквест` won't hit inside `пулреквестер`.
 
-**Fixing a word from any app.** Select a misheard word anywhere — the text field you just dictated into, a note, a browser — right-click it and choose **Fix Spelling in HoldSpeak** (in some apps it sits under **Services**). Preferences open on the Terms tab with the word already in *Transcribed as* and the cursor in *Should be*. To use a keyboard shortcut instead, assign one in System Settings → Keyboard → Keyboard Shortcuts → Services → Text.
+**Fixing a word from any app.** Select a misheard word anywhere — the text field you just dictated into, a note, a browser — right-click it and choose **Fix Spelling in Speak!** (in some apps it sits under **Services**). Preferences open on the Terms tab with the word already in *Transcribed as* and the cursor in *Should be*. To use a keyboard shortcut instead, assign one in System Settings → Keyboard → Keyboard Shortcuts → Services → Text.
 
 The Preferences window can be resized; 560×428 is its minimum.
 
 **Import / Export.** Import asks whether to add the file's terms to your list or replace it, and says so if the file isn't a dictionary export. Deleting a term shows **Undo** under the correction row. Pure JSON — commit it to a dotfiles repo, share with a team, seed a new machine.
 
-**Storage.** `~/Library/Application Support/HoldSpeak/terminology/<lang>.json` (one file per language: `ru.json`, `en.json`, `uk.json`, …).
+**Storage.** `~/Library/Application Support/Speak/terminology/<lang>.json` (one file per language: `ru.json`, `en.json`, `uk.json`, …).
 
 ## Architecture
 
@@ -172,14 +174,14 @@ The Preferences window can be resized; 560×428 is its minimum.
 - `Sources/UI` — SwiftUI: menu bar popover, preferences, onboarding, HUD
 - `Sources/App` — AppDelegate and entry point
 
-Transcription history is stored in a GRDB-SQLite database at `~/Library/Application Support/HoldSpeak/history.sqlite` (most recent 100 entries are kept).
+Transcription history is stored in a GRDB-SQLite database at `~/Library/Application Support/Speak/history.sqlite` (most recent 100 entries are kept).
 
 ## Logs
 
-Diagnostic events go to `~/Library/Logs/HoldSpeak.log`. Useful for microphone / language detection / hotkey issues:
+Diagnostic events go to `~/Library/Logs/Speak.log`. Useful for microphone / language detection / hotkey issues:
 
 ```bash
-tail -f ~/Library/Logs/HoldSpeak.log
+tail -f ~/Library/Logs/Speak.log
 ```
 
 ## Troubleshooting

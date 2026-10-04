@@ -59,7 +59,7 @@ public enum PrimaryLanguage: String, CaseIterable, Identifiable {
         self == .auto ? nil : rawValue
     }
 
-    /// The first system language HoldSpeak knows, else auto-detect.
+    /// The first system language the app knows, else auto-detect.
     public static var systemDefault: PrimaryLanguage {
         for id in Locale.preferredLanguages {
             if let lang = PrimaryLanguage(rawValue: String(id.prefix(2))) { return lang }

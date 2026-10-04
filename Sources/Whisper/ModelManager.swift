@@ -7,13 +7,11 @@ public final class ModelManager {
     private init() {}
 
     public func managedDirectory() -> URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return base.appendingPathComponent("HoldSpeak/models")
+        AppPaths.support.appendingPathComponent("models")
     }
 
     public func downloadCacheDirectory() -> URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return base.appendingPathComponent("HoldSpeak/hf-cache")
+        AppPaths.support.appendingPathComponent("hf-cache")
     }
 
     public func macWhisperDirectory() -> URL {
@@ -44,7 +42,7 @@ public final class ModelManager {
         return nil
     }
 
-    /// Parakeet: HoldSpeak's own folder, then FluidAudio's default cache (other
+    /// Parakeet: the app's own folder, then FluidAudio's default cache (other
     /// FluidAudio apps). A folder only counts once every model file is in it.
     private func locateParakeet() -> URL? {
         let managed = managedDirectory().appendingPathComponent(WhisperModelID.parakeetUltra.rawValue)
@@ -55,20 +53,20 @@ public final class ModelManager {
         return nil
     }
 
-    /// True when HoldSpeak itself has downloaded at least one model (older versions
+    /// True when the app itself has downloaded at least one model (older versions
     /// fetched one automatically on first launch).
     public func hasManagedModels() -> Bool {
         let items = try? FileManager.default.contentsOfDirectory(atPath: managedDirectory().path)
         return items?.contains { !$0.hasPrefix(".") } == true
     }
 
-    /// Bytes on disk in the folders HoldSpeak downloads into. Models found in
+    /// Bytes on disk in the folders the app downloads into. Models found in
     /// MacWhisper's or ~/Documents' folders belong to other apps and are not counted.
     public func managedBytes() -> Int64 {
         [managedDirectory(), downloadCacheDirectory()].reduce(0) { $0 + Self.size(of: $1) }
     }
 
-    /// Deletes everything HoldSpeak downloaded; other apps' models are left alone.
+    /// Deletes everything the app downloaded; other apps' models are left alone.
     public func deleteManagedModels() throws {
         let fm = FileManager.default
         for dir in [managedDirectory(), downloadCacheDirectory()] where fm.fileExists(atPath: dir.path) {
