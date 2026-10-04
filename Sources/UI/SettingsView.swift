@@ -143,8 +143,8 @@ private struct SettingsSidebar: View {
         .focusEffectDisabled()
         .focused($listFocused)
         .onMoveCommand(perform: move)
-        // Room for the traffic lights, which sit inside the sidebar.
-        .padding(.top, DS.isGlass ? 32 : 40)
+        // The traffic lights (top 22 on glass, 14 classic; 14 high) and 16 below them, concept `.side .lights`.
+        .padding(.top, 44)
         .padding(.horizontal, 10)
         .padding(.bottom, DS.s3)
         .frame(width: DS.isGlass ? 194 : 210)
