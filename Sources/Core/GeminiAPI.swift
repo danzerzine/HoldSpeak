@@ -24,6 +24,8 @@ public enum GeminiModelID: String, CaseIterable, Identifiable {
 /// Why a dictation produced no text, worded for a user notification.
 public enum TranscriptionFailure: Error, Equatable {
     case whisperModelNotReady
+    /// The on-device model threw (CoreML error, memory pressure…), not silence.
+    case localEngineFailed
     case missingAPIKey
     case invalidAPIKey
     case quotaExceeded(daily: Bool, retryAfterSeconds: Int?)
@@ -33,7 +35,8 @@ public enum TranscriptionFailure: Error, Equatable {
     /// Both lines are shown in the HUD pill, so keep them short.
     public var title: String {
         switch self {
-        case .whisperModelNotReady:  return "Whisper model not ready"
+        case .whisperModelNotReady:  return "Local model not ready"
+        case .localEngineFailed:     return "Local model failed"
         case .missingAPIKey:         return "No Gemini API key"
         case .invalidAPIKey:         return "Gemini rejected the API key"
         case .quotaExceeded(let daily, _):
@@ -46,6 +49,7 @@ public enum TranscriptionFailure: Error, Equatable {
     public var body: String {
         switch self {
         case .whisperModelNotReady: return "Still loading, or download it in Preferences"
+        case .localEngineFailed:    return "Retry from the menu bar icon"
         case .missingAPIKey:        return "Add it in Preferences → Audio"
         case .invalidAPIKey:        return "Check it in Preferences → Audio"
         // A key without billing runs on the free tier: a couple dozen requests a day.

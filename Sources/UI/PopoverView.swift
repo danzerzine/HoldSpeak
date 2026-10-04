@@ -8,6 +8,9 @@ final class PopoverViewModel: ObservableObject {
     @Published var hasMore: Bool = false
     @Published var copiedID: Int64?
     @Published var update: ReleaseInfo?
+    /// Title of the last dictation's failure while its audio is kept for a retry.
+    @Published var failedDictation: String?
+    var onRetry: (() -> Void)?
 
     static let recentVisible = 7
 
@@ -57,6 +60,11 @@ struct PopoverView: View {
 
             if let upd = vm.update {
                 updateBanner(upd)
+                Divider().background(PTT.divider(scheme)).frame(height: 1)
+            }
+
+            if let failure = vm.failedDictation {
+                retryBanner(failure)
                 Divider().background(PTT.divider(scheme)).frame(height: 1)
             }
 
@@ -233,6 +241,26 @@ struct PopoverView: View {
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 12)
+    }
+
+    // MARK: - Retry banner
+
+    private func retryBanner(_ failure: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundColor(PTT.accentLink(scheme))
+            Text(failure)
+                .font(.system(size: 12))
+                .foregroundColor(PTT.textBody(scheme))
+                .lineLimit(1)
+            Spacer()
+            Button("Retry") { vm.onRetry?() }
+                .pttProminentButton()
+                .controlSize(.small)
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 10)
+        .background(PTT.accentLink(scheme).opacity(0.10))
     }
 
     // MARK: - Update banner

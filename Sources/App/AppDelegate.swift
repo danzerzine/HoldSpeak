@@ -80,6 +80,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         popoverVM = PopoverViewModel(store: store, metricsEngine: metrics)
+        popoverVM.onRetry = { [weak self] in self?.retryFailedDictation() }
         menu = MenuBarController(viewModel: popoverVM)
         overlay = OverlayWindow(content: AnyView(hudView()))
         hotkey = HotkeyMonitor()
@@ -306,31 +307,57 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // Take the samples now, synchronously: the next recording's chunks can
             // arrive on main as soon as this completion returns.
             let samples = self.engine.takeSamples()
-            Task { @MainActor in
-                let outcome = await self.coordinator.finishRecording(samples: samples)
-                if case .inserted = outcome {
-                    self.finishHUD(generation: generation, success: true)
-                } else {
-                    self.finishHUD(generation: generation, success: false)
-                }
-                switch outcome {
-                case .empty:
-                    return
-                case .skippedSecureField:
-                    self.notify("Skipped password field", "Transcript saved to history.")
-                case .noFocus:
-                    self.notify("No focused input", "Transcript saved to history.")
-                case .inserted:
-                    break
-                case .failed(let failure):
-                    self.overlay.flash(AnyView(HUDMessageView(title: failure.title, detail: failure.body)),
-                                       anchor: self.menu.statusItemFrame,
-                                       seconds: failure.displaySeconds)
-                    return
-                }
-                self.popoverVM.refresh()
-            }
+            Task { @MainActor in await self.transcribe(samples, generation: generation) }
         }
+    }
+
+    /// Audio of the last dictation that failed to transcribe, kept for one retry.
+    private var failedSamples: [Float]?
+
+    private func retryFailedDictation() {
+        guard let samples = failedSamples else { return }
+        pttLog("retryFailedDictation")
+        menu.closePopoverAndReturnFocus()
+        hudGeneration += 1
+        let generation = hudGeneration
+        overlay.update(AnyView(hudView()))
+        HUDAmplitudeModel.shared.setPhase(.processing)
+        overlay.show(anchor: menu.statusItemFrame)
+        Task { @MainActor in await self.transcribe(samples, generation: generation) }
+    }
+
+    private func transcribe(_ samples: [Float], generation: Int) async {
+        let outcome = await self.coordinator.finishRecording(samples: samples)
+        if case .failed(let failure) = outcome {
+            self.failedSamples = samples
+            self.popoverVM.failedDictation = failure.title
+        } else if case .empty = outcome {
+            // Silence: keep any earlier failure available for retry.
+        } else {
+            self.failedSamples = nil
+            self.popoverVM.failedDictation = nil
+        }
+        if case .inserted = outcome {
+            self.finishHUD(generation: generation, success: true)
+        } else {
+            self.finishHUD(generation: generation, success: false)
+        }
+        switch outcome {
+        case .empty:
+            return
+        case .skippedSecureField:
+            self.notify("Skipped password field", "Transcript saved to history.")
+        case .noFocus:
+            self.notify("No focused input", "Transcript saved to history.")
+        case .inserted:
+            break
+        case .failed(let failure):
+            self.overlay.flash(AnyView(HUDMessageView(title: failure.title, detail: failure.body)),
+                               anchor: self.menu.statusItemFrame,
+                               seconds: failure.displaySeconds)
+            return
+        }
+        self.popoverVM.refresh()
     }
 
     /// Shows a brief checkmark after a successful insert, then hides the HUD —

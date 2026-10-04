@@ -36,6 +36,12 @@ final class MenuBarController {
         return win.convertToScreen(btn.convert(btn.bounds, to: nil))
     }
 
+    /// Closes the popover and hands focus back to the app the user was in.
+    func closePopoverAndReturnFocus() {
+        if popover.isShown { popover.performClose(nil) }
+        NSApp.hide(nil)
+    }
+
     @objc private func togglePopover(_ sender: Any?) {
         guard let btn = statusItem.button else { return }
         if popover.isShown {

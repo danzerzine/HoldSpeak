@@ -127,7 +127,7 @@ final class WhisperTranscriber {
             return .text(text, language: lang, durationMs: durationMs)
         } catch {
             pttLog("finalize error: \(error)")
-            return .empty
+            return .failed(.localEngineFailed)
         }
     }
 
@@ -166,7 +166,7 @@ final class WhisperTranscriber {
             return .text(text, language: nil, durationMs: durationMs)
         } catch {
             pttLog("finalize parakeet error: \(error)")
-            return .empty
+            return .failed(.localEngineFailed)
         }
     }
 
