@@ -115,7 +115,7 @@ struct PreferencesView: View {
             }
         }
         .modifier(PrefsTopBar { tabBar })
-        .frame(width: 560, height: 428)
+        .frame(minWidth: 560, maxWidth: .infinity, minHeight: 428, maxHeight: .infinity)
         .modifier(PrefsWindowBackground())
         .preferredColorScheme(colorSchemeOverride)
         .onAppear {
@@ -640,9 +640,12 @@ private struct AddressRow: View {
 final class PreferencesWindowController: NSWindowController {
     convenience init() {
         let host = NSHostingController(rootView: AnyView(EmptyView()))
+        // The SwiftUI minimum (560×428) becomes the window's; the user can grow it.
+        host.sizingOptions = [.minSize]
         let win = NSWindow(contentViewController: host)
         win.title = "HoldSpeak Preferences"
-        win.styleMask = [.titled, .closable, .fullSizeContentView]
+        win.styleMask = [.titled, .closable, .resizable, .fullSizeContentView]
+        win.setContentSize(NSSize(width: 560, height: 428))
         win.titlebarAppearsTransparent = true
         win.isMovableByWindowBackground = true
         self.init(window: win)
@@ -652,8 +655,10 @@ final class PreferencesWindowController: NSWindowController {
         if let host = window?.contentViewController as? NSHostingController<AnyView> {
             host.rootView = AnyView(view)
         }
+        let firstShow = window?.isVisible == false
         showWindow(nil)
-        window?.center()
+        // Keep a size and place the user chose while the window stays open.
+        if firstShow { window?.center() }
         NSApp.activate(ignoringOtherApps: true)
     }
 }
