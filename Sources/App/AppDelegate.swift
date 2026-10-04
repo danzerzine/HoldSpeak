@@ -339,11 +339,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         pttLog("startRecording")
         isRecording = true
         hudGeneration += 1
-        recorder.start(input: PreferencesStore.shared.inputSelection,
-                       duckOutput: PreferencesStore.shared.duckOutput)
+        recorder.start(input: PreferencesStore.shared.inputSelection)
+        duckOnceHeld()
         status.phase = .listening
         overlay.show(.listening, anchor: hudAnchor, screen: hudScreen)
         startLimitTimer()
+    }
+
+    /// Speakers go quiet only once the press counts as a hold: a tap shouldn't dip the music.
+    private func duckOnceHeld() {
+        let prefs = PreferencesStore.shared
+        guard prefs.duckOutput else { return }
+        let generation = hudGeneration
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(prefs.holdThresholdMs)) { [weak self] in
+            guard let self, self.isRecording, self.hudGeneration == generation else { return }
+            self.recorder.duckOutput()
+        }
     }
 
     private func cancelRecording() {

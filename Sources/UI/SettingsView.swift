@@ -517,7 +517,7 @@ private struct ShortcutPane: View {
                     }
                     .frame(width: 220)
                 } label: {
-                    RowLabel("Ignore presses shorter than", "Quick taps and ⌥-letter combos won’t turn on the microphone")
+                    RowLabel("Ignore presses shorter than", "Quick taps and ⌥-letter combos won’t start a dictation")
                 }
             }
 

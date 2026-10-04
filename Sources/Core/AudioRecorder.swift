@@ -35,9 +35,13 @@ public final class AudioRecorder {
         capture = Capture(amplitude: amplitude, chunks: chunks, failures: failures)
     }
 
-    /// `duckOutput` lowers the speakers for the recording (see `OutputDucker`).
-    public func start(input: InputSelection, duckOutput: Bool = false) {
-        perform("start") { try $0.start(input: input, duckOutput: duckOutput) }
+    public func start(input: InputSelection) {
+        perform("start") { try $0.start(input: input) }
+    }
+
+    /// Lowers the speakers until `stop` (see `OutputDucker`). A no-op unless recording.
+    public func duckOutput() {
+        perform("duck") { $0.duckOutput() }
     }
 
     /// `completion` runs on main once capture has stopped (or the stop stalled), after
@@ -122,10 +126,9 @@ private final class Capture {
         }
     }
 
-    func start(input: InputSelection, duckOutput: Bool) throws {
+    func start(input: InputSelection) throws {
         guard !abandoned, !isRecording else { return }
         self.input = input
-        if duckOutput { ducker.duck() }
         let device = InputDevice.resolve(input)
         if device != engineDevice { dropEngine() }
         unmuteIfNeeded(device ?? InputDevice.defaultID())
@@ -136,6 +139,11 @@ private final class Capture {
             ducker.restore()
             throw error
         }
+    }
+
+    func duckOutput() {
+        guard !abandoned, isRecording else { return }
+        ducker.duck()
     }
 
     func stop() {
