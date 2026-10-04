@@ -68,7 +68,7 @@ enum SnapshotRunner {
         }))
         jobs.append(("popover-failed-update", AnyView(PopoverView(vm: popoverVM)), NSSize(width: DS.popoverWidth, height: 700), {
             popoverVM.failedDictation = .init(title: "Gemini daily limit reached", seconds: 42)
-            popoverVM.update = ReleaseInfo(version: "1.4", url: URL(string: "https://example.com")!)
+            popoverVM.update = "1.4"
         }))
 
         let levels: [CGFloat] = (0..<HUDAmplitudeModel.sampleCount).map { CGFloat(($0 * 37) % 10) / 10 }

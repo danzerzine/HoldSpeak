@@ -24,7 +24,7 @@ People speak at 130–160 words a minute and type at 40–60. When most of your 
 
 Speech is recognized by **NVIDIA Parakeet** on the Mac itself. On a 2020 MacBook Air with the base M1, a ten-second phrase appears in the field about half a second after you let go of the key. Nothing is uploaded, nothing is billed, and it works offline.
 
-- **Russian and English in one sentence.** "Сделай rebase на main" comes out with `rebase` spelled the way you write it, not transliterated. Parakeet covers 25 languages, Ukrainian included.
+- **Russian and English in one sentence.** "Сделай rebase на main" comes out with `rebase` spelled the way you write it, not transliterated.
 - **Your vocabulary, learned once.** If a project name or a library keeps coming out wrong, select it anywhere, right-click, and pick **Fix Spelling in Speak!**. Type the right spelling once and every later dictation gets it right.
 - **No clipboard games.** Text is typed straight into the focused field, so your clipboard stays as you left it. Password fields are skipped, and nothing typed into them is saved.
 - **Never loses a dictation.** If the text can't be inserted, it's waiting in the menu, one click from the clipboard. If recognition fails, the audio is kept and the menu offers **Retry**.
@@ -50,7 +50,7 @@ Speech is recognized by **NVIDIA Parakeet** on the Mac itself. On a 2020 MacBook
 
 Speak! lives in the menu bar (the walkie-talkie icon) and has no Dock icon.
 
-**Updates.** The menu shows a banner when a new version is out; Settings → General → Updates → **Check Now** checks by hand. Install the new DMG over the old app. Settings, history, dictionaries and models live in `~/Library/Application Support/Speak/` and survive updates.
+**Updates.** Speak! checks for a new version once a day. When one is out, the menu shows a banner: click **Install…**, then **Install Update**, and the app downloads it, checks its signature, replaces itself and restarts. Settings → General → Updates → **Check Now** checks by hand. Versions before 0.3.3 can't update themselves: install 0.3.3 from the DMG once. Settings, history, dictionaries and models live in `~/Library/Application Support/Speak/` and survive updates.
 
 **Coming from HoldSpeak.** Speak! is the same app under a new name. On first launch it moves your models, history and dictionaries over and keeps your preferences. macOS sees it as a new app, so grant the three permissions once more (the welcome window opens on that step) and delete `HoldSpeak.app`.
 

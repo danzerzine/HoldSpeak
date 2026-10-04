@@ -17,6 +17,9 @@ packages:
   FluidAudio:
     url: https://github.com/FluidInference/FluidAudio
     minorVersion: 0.17.5
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    majorVersion: 2.7.0
 
 settings:
   base:
@@ -66,6 +69,8 @@ targets:
         product: WhisperKit
       - package: FluidAudio
         product: FluidAudio
+      - package: Sparkle
+        product: Sparkle
     info:
       path: Resources/Info.plist
       properties:
@@ -78,6 +83,11 @@ targets:
         CFBundleVersion: "146"
         NSMicrophoneUsageDescription: Speak! records your speech while you hold the hotkey and turns it into text.
         NSHumanReadableCopyright: ""
+        # Sparkle: the appcast lives on the GitHub Pages site; updates are
+        # EdDSA-signed by scripts/release.sh (key in the login keychain).
+        SUFeedURL: https://danzerzine.github.io/Speak/appcast.xml
+        SUPublicEDKey: "XbyU1yyH2ECpn47KeAFn3svHJVC8ORyT0454VaACo2c="
+        SUEnableAutomaticChecks: true
         # Right-click a misheard word anywhere: opens Terms with it typed in.
         NSServices:
           - NSMenuItem:
@@ -91,6 +101,10 @@ targets:
       properties:
         com.apple.security.app-sandbox: false
         com.apple.security.device.audio-input: true
+        # Self-signed builds have no Team ID, so library validation would refuse
+        # the embedded Sparkle.framework. DYLD_* injection stays blocked by the
+        # Hardened Runtime.
+        com.apple.security.cs.disable-library-validation: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.danzerzine.speak

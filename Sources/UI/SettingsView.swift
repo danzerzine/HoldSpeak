@@ -318,8 +318,7 @@ private struct GeneralPane: View {
     var onResetMetrics: () -> Void
     @ObservedObject private var prefs = PreferencesStore.shared
     @ObservedObject private var status = AppStatus.shared
-    @AppStorage("lastUpdateCheck") private var lastUpdateCheck: Double = 0
-    @State private var updateMessage: String?
+    @ObservedObject private var updater = AppUpdater.shared
 
     var body: some View {
         Form {
@@ -371,7 +370,7 @@ private struct GeneralPane: View {
                 LabeledContent {
                     Button("Check Now", action: checkForUpdates)
                 } label: {
-                    RowLabel("Speak! \(UpdateChecker.currentVersion) (\(buildNumber))", updateMessage ?? lastCheckText)
+                    RowLabel("Speak! \(AppUpdater.currentVersion) (\(buildNumber))", updateText)
                 }
             }
 
@@ -392,27 +391,14 @@ private struct GeneralPane: View {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
     }
 
-    private var lastCheckText: String {
-        guard lastUpdateCheck > 0 else { return "Not checked yet" }
-        let d = Date(timeIntervalSince1970: lastUpdateCheck)
+    private var updateText: String {
+        if let version = updater.availableVersion { return "Speak! \(version) is available" }
+        guard let d = updater.lastCheck else { return "Checked automatically every day" }
         return "Checked \(RelativeTime.full(Int64(d.timeIntervalSince1970 * 1000)).lowercasedFirstIfDay)"
     }
 
     private func checkForUpdates() {
-        updateMessage = "Checking…"
-        Task {
-            if let info = await UpdateChecker.shared.latest() {
-                lastUpdateCheck = Date().timeIntervalSince1970
-                if UpdateChecker.isNewer(info.version, than: UpdateChecker.currentVersion) {
-                    updateMessage = "Speak! \(info.version) is available"
-                    NSWorkspace.shared.open(info.url)
-                } else {
-                    updateMessage = "Checked just now — you’re up to date"
-                }
-            } else {
-                updateMessage = "Couldn’t reach GitHub. Check your connection"
-            }
-        }
+        updater.checkForUpdates()
     }
 
     private func confirmReset() {

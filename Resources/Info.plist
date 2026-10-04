@@ -51,5 +51,11 @@
 			</array>
 		</dict>
 	</array>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUFeedURL</key>
+	<string>https://danzerzine.github.io/Speak/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>XbyU1yyH2ECpn47KeAFn3svHJVC8ORyT0454VaACo2c=</string>
 </dict>
 </plist>

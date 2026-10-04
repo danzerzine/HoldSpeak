@@ -12,7 +12,8 @@ final class PopoverViewModel: ObservableObject {
 
     @Published var metrics: Metrics = .zero
     @Published var recent: [TranscriptionRecord] = []
-    @Published var update: ReleaseInfo?
+    /// Version of an update Sparkle found and the user hasn't installed yet.
+    @Published var update: String?
     /// The last dictation's failure while its audio is kept for a retry.
     @Published var failedDictation: FailedDictation?
     @Published var toast: String?
@@ -31,11 +32,6 @@ final class PopoverViewModel: ObservableObject {
     func refresh() {
         metrics = (try? metricsEngine.current(now: Date())) ?? .zero
         recent = (try? store.recent(limit: Self.recentVisible)) ?? []
-    }
-
-    func checkForUpdates() async {
-        guard let info = await UpdateChecker.shared.latest() else { return }
-        update = UpdateChecker.isNewer(info.version, than: UpdateChecker.currentVersion) ? info : nil
     }
 
     func copy(_ record: TranscriptionRecord) {
@@ -222,12 +218,12 @@ struct PopoverView: View {
             .padding(.vertical, DS.s1)
     }
 
-    private func updateRow(_ upd: ReleaseInfo) -> some View {
+    private func updateRow(_ version: String) -> some View {
         HStack(spacing: DS.s2) {
-            Text("Speak! \(upd.version) is available")
+            Text("Speak! \(version) is available")
                 .font(DS.detail)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Button("Download") { NSWorkspace.shared.open(upd.url) }
+            Button("Install…") { AppUpdater.shared.checkForUpdates() }
                 .dsProminent()
                 .controlSize(.small)
         }

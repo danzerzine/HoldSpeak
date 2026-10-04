@@ -77,8 +77,21 @@ hdiutil create -volname "Speak $VERSION" \
 
 rm -rf "$STAGING"
 
-# Commit version bump
-git add project.yml Resources/Info.plist
+# Sparkle feed: sign the DMG with the EdDSA key from the login keychain
+# (generate_keys --account danzerzine-speak) and list it in docs/appcast.xml,
+# which GitHub Pages serves to the app. "What's new" is the commit subjects
+# since the previous tag.
+SIGN_UPDATE="build/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update"
+SIGNED="$("$SIGN_UPDATE" --account danzerzine-speak "$DMG")"
+NOTES="dist/notes.txt"
+PREV_TAG="$(git describe --tags --abbrev=0 2>/dev/null || true)"
+git log --format=%s ${PREV_TAG:+"$PREV_TAG"..HEAD} | grep -v '^release: ' > "$NOTES" || true
+python3 scripts/appcast-add.py "$VERSION" "$BUILD_NUMBER" \
+  "https://github.com/danzerzine/Speak/releases/download/$TAG/Speak-$VERSION.dmg" \
+  "$SIGNED" "$NOTES"
+
+# Commit version bump and the feed entry
+git add project.yml Resources/Info.plist docs/appcast.xml
 git commit -m "release: $TAG" || true
 git tag -a "$TAG" -m "Release $TAG"
 
@@ -90,13 +103,13 @@ if [[ "$ANSWER" != "y" && "$ANSWER" != "Y" ]]; then
   echo "Stopped before push. The commit and tag stay local; undo with: git tag -d $TAG && git reset --hard HEAD~1"
   exit 0
 fi
-git push origin main
+# The DMG goes up before main: pushing main publishes the feed, and the apps
+# start downloading from the release right away.
 git push origin "$TAG"
-
-# GitHub release
 gh release create "$TAG" "$DMG" --repo danzerzine/Speak \
   --title "Speak! $VERSION" \
   --generate-notes
+git push origin main
 
 echo
 echo "Released $TAG"
