@@ -1,0 +1,323 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-04T15:49:53+03:00",
+  "title": "Design System: Speak!",
+  "extensions": {
+    "colorMeta": {
+      "tally-red": {
+        "role": "primary",
+        "displayName": "On-Air Tally",
+        "canonical": "NSColor.systemRed (#ff3b30 light, #ff453a dark)",
+        "tonalRamp": [
+          "#4a0d0a",
+          "#7a1610",
+          "#a81f17",
+          "#d42a20",
+          "#ff3b30",
+          "#ff6f67",
+          "#ffa49f",
+          "#ffd8d6"
+        ]
+      },
+      "warn-orange": {
+        "role": "secondary",
+        "displayName": "Needs-Setup Orange",
+        "canonical": "NSColor.systemOrange (#ff9500 light, #ff9f0a dark)",
+        "tonalRamp": [
+          "#4a2b00",
+          "#7a4700",
+          "#a86200",
+          "#d47c00",
+          "#ff9500",
+          "#ffb34d",
+          "#ffd199",
+          "#ffeed6"
+        ]
+      },
+      "ok-green": {
+        "role": "secondary",
+        "displayName": "Ready Green",
+        "canonical": "NSColor.systemGreen (#34c759 light, #30d158 dark)",
+        "tonalRamp": [
+          "#0d3a19",
+          "#155e29",
+          "#1e8239",
+          "#28a64a",
+          "#34c759",
+          "#6dd88a",
+          "#a6e9b8",
+          "#dcf6e3"
+        ]
+      },
+      "icon-salmon-light": {
+        "role": "tertiary",
+        "displayName": "Icon Salmon (top)",
+        "canonical": "srgb(1.0, 0.663, 0.584)",
+        "tonalRamp": [
+          "#4d2a22",
+          "#80473a",
+          "#b36452",
+          "#e6826b",
+          "#ffa995",
+          "#ffc0b2",
+          "#ffd7ce",
+          "#ffeeea"
+        ]
+      },
+      "icon-salmon-deep": {
+        "role": "tertiary",
+        "displayName": "Icon Salmon (bottom)",
+        "canonical": "srgb(0.941, 0.412, 0.486)",
+        "tonalRamp": [
+          "#481f25",
+          "#782f3b",
+          "#a84252",
+          "#d85468",
+          "#f0697c",
+          "#f4909e",
+          "#f8b8c1",
+          "#fce0e4"
+        ]
+      },
+      "pill-black": {
+        "role": "neutral",
+        "displayName": "Pill Black",
+        "canonical": "#141418"
+      },
+      "pill-graphite": {
+        "role": "neutral",
+        "displayName": "Pill Graphite",
+        "canonical": "#5b5b63"
+      },
+      "pill-blue": {
+        "role": "neutral",
+        "displayName": "Pill Blue",
+        "canonical": "#0a6cff"
+      },
+      "pill-purple": {
+        "role": "neutral",
+        "displayName": "Pill Purple",
+        "canonical": "#7d4cdb"
+      },
+      "pill-pink": {
+        "role": "neutral",
+        "displayName": "Pill Pink",
+        "canonical": "#d63c8a"
+      },
+      "pill-red": {
+        "role": "neutral",
+        "displayName": "Pill Red",
+        "canonical": "#d9342b"
+      },
+      "pill-orange": {
+        "role": "neutral",
+        "displayName": "Pill Orange",
+        "canonical": "#e07a10"
+      },
+      "pill-green": {
+        "role": "neutral",
+        "displayName": "Pill Green",
+        "canonical": "#1f9d55"
+      }
+    },
+    "typographyMeta": {
+      "title": {
+        "displayName": "Title",
+        "purpose": "Onboarding step titles only."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Settings pane title."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Rows, buttons, HUD and popover text."
+      },
+      "body-strong": {
+        "displayName": "Body Strong",
+        "purpose": "Emphasised row titles."
+      },
+      "callout": {
+        "displayName": "Callout",
+        "purpose": "Captions under rows, status lines, segmented labels, stats."
+      },
+      "callout-strong": {
+        "displayName": "Callout Strong",
+        "purpose": "Popover section label."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Times and counters, tabular digits."
+      }
+    },
+    "shadows": [
+      {
+        "name": "hud-solid-lift",
+        "value": "0 10px 15px rgba(0,0,0,0.3), inset 0 0 0 0.5px rgba(255,255,255,0.16)",
+        "purpose": "HUD with a solid pill colour."
+      },
+      {
+        "name": "hud-classic-lift",
+        "value": "0 18px 25px rgba(0,0,0,0.22), inset 0 0 0 0.5px rgba(0,0,0,0.1)",
+        "purpose": "Glass HUD on macOS 14-15."
+      },
+      {
+        "name": "thumb-lift",
+        "value": "0 1px 1px rgba(0,0,0,0.15)",
+        "purpose": "Selected thumb of the compact segmented control."
+      }
+    ],
+    "motion": [
+      {
+        "name": "hud-spring",
+        "value": "spring(response 0.38, dampingFraction 0.82)",
+        "purpose": "HUD drop/rise and content changes."
+      },
+      {
+        "name": "hud-fade-reduced",
+        "value": "easeOut 0.15s, opacity only",
+        "purpose": "HUD show/hide when Reduce Motion is on; content changes without animation."
+      },
+      {
+        "name": "onboarding-step",
+        "value": "easeInOut 0.2s opacity",
+        "purpose": "Onboarding step change; none with Reduce Motion."
+      },
+      {
+        "name": "icon-pop",
+        "value": "0.45s, scale 1 to 1.25 to 1 (sine)",
+        "purpose": "Menu bar glyph after a successful insert; skipped with Reduce Motion."
+      },
+      {
+        "name": "bar-shimmer",
+        "value": "1s ease-in-out wave, 0.15s stagger",
+        "purpose": "Transcribing level bars; static at 0.4 with Reduce Motion."
+      },
+      {
+        "name": "loading-ring",
+        "value": "1 revolution per second",
+        "purpose": "Model-loading ring; still with Reduce Motion."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "HUD Pill (glass, listening)",
+      "kind": "custom",
+      "refersTo": "hud-pill",
+      "description": "Recording capsule under the menu bar icon or at the bottom of the screen; system glass by default.",
+      "html": "<div class=\"ds-hud\"><span class=\"ds-hud-dot\"></span><b>Listening</b><span class=\"ds-hud-wave\"><i style=\"height:6px\"></i><i style=\"height:14px\"></i><i style=\"height:20px\"></i><i style=\"height:10px\"></i><i style=\"height:16px\"></i><i style=\"height:8px\"></i></span><span class=\"ds-hud-meta\">0:03</span><span class=\"ds-hud-meta\">RU</span></div>",
+      "css": ".ds-hud{display:inline-flex;align-items:center;gap:10px;height:40px;padding:0 16px 0 14px;border-radius:999px;background:rgba(246,246,248,.72);backdrop-filter:blur(30px) saturate(1.8);border:.5px solid rgba(0,0,0,.1);box-shadow:0 18px 25px rgba(0,0,0,.22);font:13px/1 -apple-system, 'SF Pro Text', system-ui, sans-serif;color:#1d1d1f} .ds-hud b{font-weight:600} .ds-hud-dot{width:8px;height:8px;border-radius:50%;background:#ff3b30;box-shadow:0 0 0 4px rgba(255,59,48,.22)} .ds-hud-wave{display:inline-flex;align-items:center;gap:1.5px;width:96px;height:24px} .ds-hud-wave i{width:2.5px;border-radius:1.25px;background:currentColor;opacity:.85} .ds-hud-meta{font-size:12px;color:rgba(60,60,67,.6);font-variant-numeric:tabular-nums}"
+    },
+    {
+      "name": "HUD Pill (solid colour)",
+      "kind": "custom",
+      "refersTo": "hud-pill",
+      "description": "Same pill with a user-chosen solid fill; text turns white, secondary white 72%.",
+      "html": "<div class=\"ds-hud-solid\"><span class=\"ds-hud-solid-dot\"></span><b>Listening</b><span class=\"ds-hud-solid-meta\">0:03</span></div>",
+      "css": ".ds-hud-solid{display:inline-flex;align-items:center;gap:10px;height:40px;padding:0 16px 0 14px;border-radius:999px;background:#141418;border:.5px solid rgba(255,255,255,.16);box-shadow:0 10px 15px rgba(0,0,0,.3);font:13px/1 -apple-system, 'SF Pro Text', system-ui, sans-serif;color:#fff} .ds-hud-solid b{font-weight:600} .ds-hud-solid-dot{width:8px;height:8px;border-radius:50%;background:#fff;box-shadow:0 0 0 4px rgba(255,255,255,.28)} .ds-hud-solid-meta{font-size:12px;color:rgba(255,255,255,.72);font-variant-numeric:tabular-nums}"
+    },
+    {
+      "name": "Menu Bar Item (listening)",
+      "kind": "custom",
+      "refersTo": "menu-bar-item",
+      "description": "Status item while recording: white radio glyph and four level bars on tally red.",
+      "html": "<span class=\"ds-mbitem\"><svg width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><rect x=\"3\" y=\"7\" width=\"16\" height=\"10\" rx=\"3\"/><rect x=\"19\" y=\"10\" width=\"3\" height=\"1.6\" rx=\".8\"/></svg><span class=\"ds-mbbars\"><i style=\"height:6px\"></i><i style=\"height:12px\"></i><i style=\"height:9px\"></i><i style=\"height:4px\"></i></span></span>",
+      "css": ".ds-mbitem{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 7px;border-radius:6px;background:rgba(255,59,48,.92);color:#fff} .ds-mbbars{display:inline-flex;align-items:center;gap:2px;width:20px;height:14px} .ds-mbbars i{width:2.5px;border-radius:1.25px;background:currentColor}"
+    },
+    {
+      "name": "Prominent Button",
+      "kind": "button",
+      "refersTo": "button-prominent",
+      "description": "dsProminent(): the one forward action per surface (classic rendering shown).",
+      "html": "<button class=\"ds-btn-prominent\">Continue</button>",
+      "css": ".ds-btn-prominent{font:13px -apple-system, 'SF Pro Text', system-ui, sans-serif;color:#fff;background:#007aff;border:none;border-radius:6px;padding:3px 12px;cursor:default} .ds-btn-prominent:hover{background:#0a6fe6} .ds-btn-prominent:focus-visible{outline:3px solid rgba(0,122,255,.5);outline-offset:1px} .ds-btn-prominent:active{background:#0062cc}"
+    },
+    {
+      "name": "Compact Segmented",
+      "kind": "input",
+      "refersTo": "compact-segmented",
+      "description": "Small segmented control inside settings rows: grey track, white thumb, 11.5 pt labels.",
+      "html": "<div class=\"ds-seg\"><button class=\"ds-seg-on\">System</button><button>Light</button><button>Dark</button></div>",
+      "css": ".ds-seg{display:inline-flex;gap:1px;padding:2px;border-radius:7px;background:rgba(0,0,0,.06)} .ds-seg button{font:11.5px -apple-system, 'SF Pro Text', system-ui, sans-serif;color:rgba(60,60,67,.6);background:none;border:none;border-radius:5px;padding:2px 9px} .ds-seg button:hover{color:#1d1d1f} .ds-seg button:focus-visible{outline:2px solid #007aff} .ds-seg .ds-seg-on{color:#1d1d1f;background:#fff;box-shadow:0 1px 1px rgba(0,0,0,.15)}"
+    },
+    {
+      "name": "Hotkey Keycap",
+      "kind": "input",
+      "refersTo": "keycap",
+      "description": "Hotkey recorder; accent 2 pt border while waiting for a key.",
+      "html": "<button class=\"ds-keycap\">Right ⌥</button>",
+      "css": ".ds-keycap{font:13px -apple-system, 'SF Pro Text', system-ui, sans-serif;color:#1d1d1f;min-width:110px;padding:3px 10px;border-radius:6px;background:#fff;border:.5px solid rgba(0,0,0,.14)} .ds-keycap:focus-visible,.ds-keycap:active{border:2px solid #007aff;padding:1.5px 8.5px}"
+    },
+    {
+      "name": "Settings Sidebar Item",
+      "kind": "nav",
+      "refersTo": "sidebar-item",
+      "description": "Coloured symbol tile plus title; selected row fills accent.",
+      "html": "<nav class=\"ds-side\"><a class=\"ds-side-on\"><span class=\"ds-tile\" style=\"background:#8e8e93\"></span>General</a><a><span class=\"ds-tile\" style=\"background:#5e5ce6\"></span>Shortcut</a><a><span class=\"ds-tile\" style=\"background:#0a84ff\"></span>Recognition</a></nav>",
+      "css": ".ds-side{display:flex;flex-direction:column;width:194px;font:13px -apple-system, 'SF Pro Text', system-ui, sans-serif} .ds-side a{display:flex;align-items:center;gap:8px;padding:4px 8px;border-radius:7px;color:#1d1d1f} .ds-side a:hover{background:rgba(0,0,0,.05)} .ds-side a:focus-visible{outline:2px solid #007aff} .ds-side .ds-side-on{background:#007aff;color:#fff} .ds-tile{width:20px;height:20px;border-radius:5px}"
+    },
+    {
+      "name": "Engine Card",
+      "kind": "card",
+      "refersTo": "engine-card",
+      "description": "Onboarding engine choice; selected state is accent 8% fill with 2 pt accent border.",
+      "html": "<button class=\"ds-card\"><b>On this Mac</b><span>Parakeet Ultra, private, works offline.</span></button>",
+      "css": ".ds-card{display:flex;flex-direction:column;gap:4px;text-align:left;width:240px;padding:14px;border-radius:12px;background:rgba(0,0,0,.035);border:1px solid rgba(0,0,0,.06);font:13px -apple-system, 'SF Pro Text', system-ui, sans-serif;color:#1d1d1f} .ds-card span{font-size:12px;color:rgba(60,60,67,.6)} .ds-card:hover{background:rgba(0,0,0,.05)} .ds-card:focus-visible,.ds-card:active{background:rgba(0,122,255,.08);border:2px solid #007aff;padding:13px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "On Air",
+    "overview": "**Creative North Star: \"On Air\"**\n\nSpeak! should look like a first-party Apple utility that stays out of sight until the hotkey is held, and then lights one red tally, the way a studio lamp says a microphone is live. Everything else is the system's own vocabulary: materials, controls, SF Symbols, semantic colours, the user's accent. The app owns very little of its own visual language on purpose, and that restraint is the identity.\n\nTwo renderings of one design ship side by side. On macOS 26 and later (`DS.isGlass`) surfaces use Liquid Glass, capsules and glass buttons. On macOS 14–15 they fall back to `NSVisualEffectView` with the `.popover` material, rounded rectangles, a 0.5 pt hairline and bordered buttons. Every surface has to work in both; `dsGlass`, `dsProminent` and `dsButton` make that switch, so views never branch on the OS for chrome themselves.\n\nDensity follows macOS menus and System Settings: 13 pt body, 38 pt grouped rows, 4 pt spacing steps, a 340 pt popover.",
+    "keyCharacteristics": [
+      "One app-owned colour, the red tally; all other colour is system semantic or user-chosen.",
+      "Liquid Glass on 26+, classic materials on 14–15, selected by `DS.isGlass`.",
+      "Seven named text styles; times and counters always use tabular digits.",
+      "State is shown in the menu bar icon itself, before the user speaks.",
+      "Reduce Motion turns every movement into a fade or a still frame."
+    ],
+    "rules": [
+      {
+        "name": "The One Tally Rule",
+        "body": "The only colour the app asserts on its own is the red tally, and it means \"recording\", \"failed\" or \"destructive\". Any other colour on screen comes from a system semantic role, the user's accent colour, or the user's own pill choice.",
+        "section": "colors"
+      },
+      {
+        "name": "The State-Not-Decoration Rule",
+        "body": "Red, orange and green each map to a state (red: recording, failed or destructive; orange: needs setup; green: ready or done). Never use them as accents, highlights or brand fills.",
+        "section": "colors"
+      },
+      {
+        "name": "The Named Style Rule",
+        "body": "Text takes its size and weight from a `DS` style. A size that no style covers is a request for a new role in `DesignTokens.swift`, not an inline `.font(.system(size:))`.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Clock Rule",
+        "body": "Elapsed time, counts and WPM figures always use monospaced digits so they do not jitter while updating.",
+        "section": "typography"
+      },
+      {
+        "name": "The Material-First Rule",
+        "body": "Popover, sidebar and HUD get depth from the system material, not from drawn shadows. A new floating surface uses `dsGlass`; it does not invent its own shadow.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do take every size, radius and text style from `DS`, and add a named role there when none fits.",
+      "Do build floating surfaces with `dsGlass` and primary actions with `dsProminent`, so both the Liquid Glass and the classic rendering stay correct.",
+      "Do show readiness in the menu bar icon and popover status line (green ready, orange needs setup, grey loading) before the user speaks.",
+      "Do replace movement with a fade or a still frame when `DS.reduceMotion` is on: no spring, no shimmer, no spinning ring, no icon pop.",
+      "Do announce HUD state changes to VoiceOver and give the menu bar icon a state-specific label (\"Speak!, listening\").",
+      "Do render menu bar states into the status button image."
+    ],
+    "donts": [
+      "Don't introduce an app-owned colour besides the red tally; use system semantic colours, the accent colour or the user's pill choice.",
+      "Don't use red, orange or green for anything except their states.",
+      "Don't write `.font(.system(size:))` in a view.",
+      "Don't use the app icon's salmon gradient as a UI fill or text colour.",
+      "Don't replace the walkie-talkie glyph with an SF Symbol microphone, or stand it upright.",
+      "Don't place SwiftUI or AppKit subviews over the status bar button; they do not show."
+    ]
+  }
+}
