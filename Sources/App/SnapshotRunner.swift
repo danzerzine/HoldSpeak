@@ -10,13 +10,19 @@ enum SnapshotRunner {
                     popoverVM: PopoverViewModel) {
         let out = URL(fileURLWithPath: dir)
         try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
-        var jobs: [(String, AnyView, NSSize)] = []
+        // `prep` runs right before its job renders: shared state (pill colour,
+        // popover extras) set while building the list would leak into every job.
+        var jobs: [(name: String, view: AnyView, size: NSSize, prep: () -> Void)] = []
 
         popoverVM.refresh()
-        jobs.append(("popover", AnyView(PopoverView(vm: popoverVM)), NSSize(width: DS.popoverWidth, height: 600)))
-        popoverVM.failedDictation = .init(title: "Gemini daily limit reached", seconds: 42)
-        popoverVM.update = ReleaseInfo(version: "1.4", url: URL(string: "https://example.com")!)
-        jobs.append(("popover-failed-update", AnyView(PopoverView(vm: popoverVM)), NSSize(width: DS.popoverWidth, height: 700)))
+        jobs.append(("popover", AnyView(PopoverView(vm: popoverVM)), NSSize(width: DS.popoverWidth, height: 600), {
+            popoverVM.failedDictation = nil
+            popoverVM.update = nil
+        }))
+        jobs.append(("popover-failed-update", AnyView(PopoverView(vm: popoverVM)), NSSize(width: DS.popoverWidth, height: 700), {
+            popoverVM.failedDictation = .init(title: "Gemini daily limit reached", seconds: 42)
+            popoverVM.update = ReleaseInfo(version: "1.4", url: URL(string: "https://example.com")!)
+        }))
 
         let levels: [CGFloat] = (0..<HUDAmplitudeModel.sampleCount).map { CGFloat(($0 * 37) % 10) / 10 }
         for scheme in [ColorScheme.light, .dark] {
@@ -24,7 +30,7 @@ enum SnapshotRunner {
                 jobs.append(("icon-\(scheme == .dark ? "dark" : "light")-\(state)",
                              AnyView(StatusItemView(state: state, levels: levels, time: 0.3, pop: nil)
                                 .padding(6).environment(\.colorScheme, scheme)),
-                             NSSize(width: 80, height: 34)))
+                             NSSize(width: 80, height: 34), {}))
             }
         }
 
@@ -39,10 +45,10 @@ enum SnapshotRunner {
         let prefs = PreferencesStore.shared
         let savedPill = prefs.pillColor
         for color in ["glass", "black"] {
-            prefs.pillColor = color
             for (name, content) in huds {
                 jobs.append(("hud-\(color)-\(name)",
-                             AnyView(HUDPill(content: content).padding(30)), NSSize(width: 640, height: 120)))
+                             AnyView(HUDPill(content: content).padding(30)), NSSize(width: 640, height: 120),
+                             { prefs.pillColor = color }))
             }
         }
 
@@ -50,13 +56,13 @@ enum SnapshotRunner {
             jobs.append(("settings-\(pane.rawValue)",
                          AnyView(SettingsView(modelsVM: modelsVM, historyStore: store, onClearHistory: {},
                                               onResetMetrics: {}, initialPane: pane)),
-                         NSSize(width: 780, height: 540)))
+                         NSSize(width: 780, height: 540), {}))
         }
         for step in OnboardingView.Step.allCases {
             jobs.append(("onboarding-\(step.rawValue)",
                          AnyView(OnboardingView(modelsVM: modelsVM, needsEngine: true, initialStep: step,
                                                 onEngineChosen: { _ in }, onTryPress: {}, onTryRelease: {}, onDone: {})),
-                         NSSize(width: 600, height: 470)))
+                         NSSize(width: 600, height: 470), {}))
         }
 
         func next(_ i: Int) {
@@ -66,7 +72,8 @@ enum SnapshotRunner {
                 NSApp.terminate(nil)
                 return
             }
-            let (name, view, size) = jobs[i]
+            let (name, view, size, prep) = jobs[i]
+            prep()
             let win = NSWindow(contentRect: NSRect(origin: NSPoint(x: 80, y: 80), size: size),
                                styleMask: [.titled, .fullSizeContentView], backing: .buffered, defer: false)
             win.titlebarAppearsTransparent = true

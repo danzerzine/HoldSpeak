@@ -27,6 +27,17 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         }
     }
 
+    /// Words the sidebar search matches besides the title.
+    var keywords: [String] {
+        switch self {
+        case .general:     return ["permissions", "microphone", "accessibility", "login", "theme", "appearance", "pill", "updates", "statistics"]
+        case .shortcut:    return ["hotkey", "key", "push to talk", "option", "recording", "limit"]
+        case .recognition: return ["engine", "model", "parakeet", "whisper", "gemini", "api key", "language", "microphone", "punctuation"]
+        case .dictionary:  return ["terms", "words", "corrections", "spelling", "import", "export"]
+        case .history:     return ["dictations", "recent", "clear"]
+        }
+    }
+
     /// Sidebar tile colour, as System Settings colours its icons.
     var tint: Color {
         switch self {
@@ -47,43 +58,182 @@ struct SettingsView: View {
     var initialPane: SettingsPane = .general
 
     @ObservedObject private var prefs = PreferencesStore.shared
-    @State private var pane: SettingsPane? = .general
+    @State private var pane: SettingsPane = .general
+    /// The header search field of Dictionary and History.
+    @State private var paneQuery = ""
 
     var body: some View {
-        NavigationSplitView {
-            List(SettingsPane.allCases, selection: $pane) { p in
-                Label {
-                    Text(p.title)
-                } icon: {
-                    Image(systemName: p.symbol)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 20, height: 20)
-                        .background(RoundedRectangle(cornerRadius: 5).fill(p.tint))
-                }
-                .tag(p)
+        HStack(spacing: 0) {
+            SettingsSidebar(selection: $pane)
+            VStack(spacing: 0) {
+                header
+                content
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .navigationSplitViewColumnWidth(210)
-        } detail: {
-            Group {
-                switch pane ?? .general {
-                case .general:
-                    GeneralPane(onResetMetrics: onResetMetrics)
-                case .shortcut:
-                    ShortcutPane()
-                case .recognition:
-                    RecognitionPane(modelsVM: modelsVM)
-                case .dictionary:
-                    DictionaryPane()
-                case .history:
-                    HistoryPane(store: historyStore, onClear: onClearHistory)
-                }
-            }
-            .navigationTitle((pane ?? .general).title)
         }
-        .frame(minWidth: 720, minHeight: 500)
+        .frame(minWidth: 700, minHeight: 480)
         .preferredColorScheme(prefs.appTheme.colorScheme)
         .onAppear { pane = initialPane }
+        .onChange(of: pane) { paneQuery = "" }
+    }
+
+    /// Pane title in the content column (concept `.ctop`): 52 high, 15 pt bold.
+    private var header: some View {
+        HStack(spacing: 10) {
+            Text(pane.title)
+                .font(DS.headline)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityAddTraits(.isHeader)
+            if pane == .dictionary || pane == .history {
+                SearchField(prompt: pane == .dictionary ? "Search terms" : "Search", text: $paneQuery)
+                    .frame(width: 170)
+            }
+        }
+        .padding(.horizontal, DS.s5)
+        .frame(height: 52)
+    }
+
+    @ViewBuilder private var content: some View {
+        switch pane {
+        case .general:
+            GeneralPane(onResetMetrics: onResetMetrics)
+        case .shortcut:
+            ShortcutPane()
+        case .recognition:
+            RecognitionPane(modelsVM: modelsVM)
+        case .dictionary:
+            DictionaryPane(searchText: $paneQuery)
+        case .history:
+            HistoryPane(store: historyStore, query: $paneQuery, onClear: onClearHistory)
+        }
+    }
+}
+
+/// Sidebar of the Settings window (concept `.side`): an inset glass panel on
+/// macOS 26+, a full-height sidebar with a hairline on 14–15. Its search field
+/// filters the sections; ↑/↓ move between them.
+private struct SettingsSidebar: View {
+    @Binding var selection: SettingsPane
+    @State private var query = ""
+    @FocusState private var listFocused: Bool
+
+    private var visible: [SettingsPane] {
+        let q = query.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !q.isEmpty else { return SettingsPane.allCases }
+        return SettingsPane.allCases.filter { p in
+            p.title.lowercased().contains(q) || p.keywords.contains { $0.contains(q) }
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            SearchField(prompt: "Search", text: $query)
+                .padding(.horizontal, 2)
+                .padding(.bottom, 10)
+                .onSubmit { if let first = visible.first { selection = first } }
+            ForEach(visible) { p in
+                SidebarRow(pane: p, selected: p == selection) { selection = p }
+            }
+            Spacer(minLength: 0)
+        }
+        .focusable()
+        .focusEffectDisabled()
+        .focused($listFocused)
+        .onMoveCommand(perform: move)
+        // Room for the traffic lights, which sit inside the sidebar.
+        .padding(.top, DS.isGlass ? 32 : 40)
+        .padding(.horizontal, 10)
+        .padding(.bottom, DS.s3)
+        .frame(width: DS.isGlass ? 194 : 210)
+        .frame(maxHeight: .infinity)
+        .background { sidebarBackground }
+        .padding(DS.isGlass ? 8 : 0)
+    }
+
+    @ViewBuilder private var sidebarBackground: some View {
+        if DS.isGlass {
+            Color.clear.dsGlass(RoundedRectangle(cornerRadius: 14))
+        } else {
+            VisualEffectBackground(material: .sidebar)
+                .overlay(alignment: .trailing) {
+                    Rectangle().fill(Color(nsColor: .separatorColor)).frame(width: 1)
+                }
+        }
+    }
+
+    private func move(_ direction: MoveCommandDirection) {
+        let list = visible
+        guard let i = list.firstIndex(of: selection) else {
+            if let first = list.first { selection = first }
+            return
+        }
+        switch direction {
+        case .up where i > 0:               selection = list[i - 1]
+        case .down where i < list.count - 1: selection = list[i + 1]
+        default: break
+        }
+    }
+}
+
+/// One section in the sidebar: colour tile and title; the chosen one is filled
+/// with the accent colour and white text (concept `.nav[aria-current]`).
+private struct SidebarRow: View {
+    let pane: SettingsPane
+    let selected: Bool
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: DS.s2) {
+                Image(systemName: pane.symbol)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 20, height: 20)
+                    .background(RoundedRectangle(cornerRadius: 5).fill(pane.tint))
+                Text(pane.title)
+                    .font(DS.body)
+                    .foregroundStyle(selected ? Color.white : Color.primary)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, DS.s2)
+            .padding(.vertical, DS.s1)
+            .background {
+                RoundedRectangle(cornerRadius: 7)
+                    .fill(selected ? Color.accentColor : Color.primary.opacity(hovering ? 0.05 : 0))
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .accessibilityAddTraits(selected ? [.isSelected] : [])
+    }
+}
+
+/// Small rounded search field (concept `.search` / `.ctop .field`).
+struct SearchField: View {
+    let prompt: String
+    @Binding var text: String
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 11))
+                .foregroundStyle(.tertiary)
+            TextField(prompt, text: $text)
+                .textFieldStyle(.plain)
+                .font(.system(size: 12.5))
+            if !text.isEmpty {
+                Button { text = "" } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Clear search")
+            }
+        }
+        .padding(.horizontal, DS.s2)
+        .padding(.vertical, 4)
+        .background(RoundedRectangle(cornerRadius: 7).fill(Color.primary.opacity(0.05)))
     }
 }
 
@@ -106,6 +256,20 @@ struct RowLabel: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+        }
+    }
+}
+
+/// A status (dot and text) in place of a row title, with a caption under it.
+struct StatusRowLabel: View {
+    let status: StatusDot
+    let caption: String
+    var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            status
+            Text(caption)
+                .font(DS.callout)
+                .foregroundStyle(.secondary)
         }
     }
 }
@@ -210,7 +374,7 @@ private struct GeneralPane: View {
 
             Section {
                 LabeledContent {
-                    Button("Reset…", action: confirmReset)
+                    Button(action: confirmReset) { Text("Reset…").foregroundStyle(DS.tally) }
                 } label: {
                     RowLabel("Statistics", "Dictations and words per minute in the menu")
                 }
@@ -355,15 +519,18 @@ private struct ShortcutPane: View {
                         Slider(value: .init(get: { Double(prefs.holdThresholdMs) },
                                             set: { prefs.holdThresholdMs = Int(($0 / 10).rounded()) * 10 }),
                                in: 50...800)
-                            .frame(width: 160)
                         Text("\(prefs.holdThresholdMs) ms")
                             .monospacedDigit()
                             .foregroundStyle(.secondary)
-                            .frame(width: 52, alignment: .trailing)
+                            .frame(width: 48, alignment: .trailing)
                     }
+                    .frame(width: 220)
                 } label: {
                     RowLabel("Ignore presses shorter than", "Quick taps and ⌥-letter combos won’t turn on the microphone")
                 }
+            }
+
+            Section {
 
                 Picker(selection: $prefs.maxRecordingMinutes) {
                     Text("1 minute").tag(1)
@@ -408,7 +575,7 @@ private struct RecognitionPane: View {
                 Picker(selection: $prefs.primaryLanguage) {
                     ForEach(PrimaryLanguage.allCases) { Text($0.label).tag($0) }
                 } label: {
-                    RowLabel("Language", "Choosing one helps on short phrases; Auto detects it each time")
+                    RowLabel("Language", "Auto chooses among the languages in Language & Region")
                 }
                 Picker(selection: $prefs.inputSelection) {
                     Text(inputLabel(.avoidBluetooth)).tag(InputSelection.avoidBluetooth)
@@ -442,7 +609,7 @@ private struct RecognitionPane: View {
         Section {
             Picker("Model", selection: $prefs.modelID) {
                 ForEach(WhisperModelID.allCases) { m in
-                    Text(m.isParakeet ? m.shortLabel : "Whisper \(m.shortLabel)").tag(m)
+                    Text(Self.modelLabel(m)).tag(m)
                 }
             }
             if modelsVM.downloading {
@@ -454,10 +621,10 @@ private struct RecognitionPane: View {
             } else if modelsVM.isLocated(prefs.modelID) {
                 LabeledContent {
                     if modelsVM.managedBytes > 0 {
-                        Button("Delete…", role: .destructive, action: confirmDeleteModels)
+                        Button(action: confirmDeleteModels) { Text("Delete…").foregroundStyle(DS.tally) }
                     }
                 } label: {
-                    RowLabel("Downloaded", modelsVM.managedBytes > 0
+                    StatusRowLabel(status: StatusDot(text: "Downloaded", color: DS.ok), caption: modelsVM.managedBytes > 0
                              ? "Stored in Application Support · \(ByteCountFormatter.string(fromByteCount: modelsVM.managedBytes, countStyle: .file))"
                              : "Found in another app’s folder")
                 }
@@ -485,6 +652,12 @@ private struct RecognitionPane: View {
             .font(DS.callout)
             .foregroundStyle(.secondary)
         }
+    }
+
+    /// "Parakeet Ultra · 610 MB", "Whisper Small · 470 MB" (concept `.pick`).
+    static func modelLabel(_ m: WhisperModelID) -> String {
+        let name = m.shortLabel.replacingOccurrences(of: " (~", with: " · ").replacingOccurrences(of: ")", with: "")
+        return m.isParakeet ? name : "Whisper \(name)"
     }
 
     private func loadInputDevices() {
@@ -543,10 +716,10 @@ private struct EngineOption: View {
 
 private struct HistoryPane: View {
     let store: HistoryStoring
+    @Binding var query: String
     let onClear: () -> Void
     @State private var rows: [TranscriptionRecord] = []
     @State private var selection = Set<TranscriptionRecord.ID>()
-    @State private var query = ""
 
     private var filtered: [TranscriptionRecord] {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
@@ -555,24 +728,30 @@ private struct HistoryPane: View {
     }
 
     var body: some View {
+        // Table and its footer in one rounded box (concept `.tblbox`).
         VStack(spacing: 0) {
             Table(filtered, selection: $selection) {
                 TableColumn("Time") { r in
-                    Text(RelativeTime.full(r.createdAt)).font(DS.caption).foregroundStyle(.secondary)
+                    Text(RelativeTime.full(r.createdAt))
+                        .font(DS.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .fixedSize()
                 }
-                .width(min: 70, ideal: 90, max: 130)
+                .width(104)
                 TableColumn("Text") { r in
                     Text(r.cleanedText).lineLimit(2).help(r.cleanedText)
                 }
+                .width(min: 160, ideal: 200)
                 TableColumn("Words") { r in
                     Text("\(r.wordCount)").font(DS.caption).foregroundStyle(.secondary)
                 }
-                .width(min: 40, ideal: 48, max: 60)
+                .width(54)
                 TableColumn("Result") { r in
                     StatusDot(text: r.inserted ? "Inserted" : "Not inserted", color: r.inserted ? DS.ok : DS.warn)
                         .font(DS.callout)
                 }
-                .width(min: 90, ideal: 100, max: 120)
+                .width(104)
             }
             .contextMenu(forSelectionType: TranscriptionRecord.ID.self) { ids in
                 Button("Copy") { copy(ids) }
@@ -591,17 +770,26 @@ private struct HistoryPane: View {
 
             Divider()
             HStack {
-                Text("Double-click a row to copy it; right-click for more")
+                Text("Double-click a row to copy it; right-click to fix a term")
                     .font(DS.callout)
                     .foregroundStyle(.secondary)
                 Spacer()
-                Button("Clear History…", action: confirmClear)
-                    .disabled(rows.isEmpty)
+                Button(action: confirmClear) {
+                    Text("Clear History…").foregroundStyle(rows.isEmpty ? Color.secondary : DS.tally)
+                }
+                .controlSize(.small)
+                .disabled(rows.isEmpty)
             }
-            .padding(.horizontal, DS.s4)
-            .padding(.vertical, DS.s2)
+            .padding(.leading, DS.s3)
+            .padding(.trailing, 6)
+            .padding(.vertical, DS.s1)
+            .background(Color.primary.opacity(0.035))
         }
-        .searchable(text: $query, placement: .toolbar, prompt: "Search")
+        .clipShape(RoundedRectangle(cornerRadius: DS.isGlass ? 14 : 10))
+        .overlay(RoundedRectangle(cornerRadius: DS.isGlass ? 14 : 10)
+            .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1))
+        .padding(.horizontal, DS.s5)
+        .padding(.bottom, DS.s5)
         .onAppear(perform: load)
         .onReceive(NotificationCenter.default.publisher(for: .historyDidChange)) { _ in load() }
     }
@@ -633,17 +821,20 @@ private struct HistoryPane: View {
 // MARK: - Window
 
 final class PreferencesWindowController: NSWindowController {
-    private static let frameName = "SpeakSettings"
+    /// Renamed with the own sidebar shell, so a size saved by the old
+    /// NavigationSplitView window (720 wide) is not restored.
+    private static let frameName = "SpeakSettingsWindow"
 
     convenience init() {
         let host = NSHostingController(rootView: AnyView(EmptyView()))
         host.sizingOptions = [.minSize]
-        // SwiftUI owns the toolbar (title, sidebar toggle, search field).
-        host.sceneBridgingOptions = [.toolbars, .title]
         let win = NSWindow(contentViewController: host)
         win.title = "Settings"
+        // No toolbar or title: the sidebar runs to the top edge under the
+        // traffic lights and each pane draws its own header (concept `.win`).
         win.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
-        win.toolbarStyle = .unified
+        win.titlebarAppearsTransparent = true
+        win.titleVisibility = .hidden
         win.titlebarSeparatorStyle = .none
         win.setContentSize(NSSize(width: 780, height: 540))
         self.init(window: win)

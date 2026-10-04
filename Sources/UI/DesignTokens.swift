@@ -170,7 +170,7 @@ struct CompactSegmented<Value: Hashable>: View {
                         .padding(.vertical, 2)
                         .background {
                             if selected {
-                                RoundedRectangle(cornerRadius: DS.segThumbRadius)
+                                thumbShape
                                     .fill(Color(nsColor: .controlBackgroundColor))
                                     .shadow(color: .black.opacity(0.15), radius: 1, y: 1)
                             }
@@ -182,9 +182,17 @@ struct CompactSegmented<Value: Hashable>: View {
             }
         }
         .padding(2)
-        .background(RoundedRectangle(cornerRadius: DS.segTrackRadius).fill(Color.primary.opacity(0.06)))
+        .background(trackShape.fill(Color.primary.opacity(0.06)))
         .accessibilityElement(children: .contain)
         .accessibilityLabel(label)
+    }
+
+    /// Capsules on macOS 26+, as the system controls there; 7/5 radii before.
+    private var trackShape: AnyShape {
+        DS.isGlass ? AnyShape(Capsule()) : AnyShape(RoundedRectangle(cornerRadius: DS.segTrackRadius))
+    }
+    private var thumbShape: AnyShape {
+        DS.isGlass ? AnyShape(Capsule()) : AnyShape(RoundedRectangle(cornerRadius: DS.segThumbRadius))
     }
 }
 

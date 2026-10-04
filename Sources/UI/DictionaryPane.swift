@@ -33,7 +33,8 @@ struct DictionaryPane: View {
 
     @State private var editing: TerminologyEntry?
     @State private var selection = Set<TerminologyEntry.ID>()
-    @State private var searchText: String = ""
+    /// The search field in the Settings header.
+    @Binding var searchText: String
 
     private var filteredEntries: [TerminologyEntry] {
         let q = searchText.trimmingCharacters(in: .whitespaces)
@@ -58,10 +59,16 @@ struct DictionaryPane: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: DS.s3) {
-            CompactSegmented(label: "Dictionary language",
-                             selection: Binding(get: { store.activeLanguage },
-                                                set: { store.setActiveLanguage($0) }),
-                             options: languages.map { ($0.rawValue, $0.label) })
+            HStack(spacing: DS.s3) {
+                CompactSegmented(label: "Dictionary language",
+                                 selection: Binding(get: { store.activeLanguage },
+                                                    set: { store.setActiveLanguage($0) }),
+                                 options: languages.map { ($0.rawValue, $0.label) })
+                Text(store.entries.count == 1 ? "1 term" : "\(store.entries.count) terms")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
 
             correctionRow
 
@@ -93,8 +100,6 @@ struct DictionaryPane: View {
         }
         .padding(.horizontal, DS.s5)
         .padding(.bottom, DS.s5)
-        .padding(.top, DS.s2)
-        .searchable(text: $searchText, placement: .toolbar, prompt: "Search terms")
         .onAppear {
             // Open the dictionary dictation uses now, where a fix most likely belongs.
             store.setActiveLanguage(store.dictationLanguage)
@@ -125,7 +130,7 @@ struct DictionaryPane: View {
 
     private var correctionRow: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .bottom, spacing: DS.s2) {
+            HStack(alignment: .bottom, spacing: 10) {
                 correctionField("Transcribed as", placeholder: "бойскап", text: $draft.wrong, field: .wrong) {
                     correctionFocus = .right
                 }
@@ -135,6 +140,11 @@ struct DictionaryPane: View {
                 correctionField("Should be", placeholder: "Basecamp", text: $right, field: .right,
                                 onSubmit: saveCorrection)
             }
+            // Concept `.grp`: the always-open row sits in a grey group.
+            .padding(.horizontal, DS.s3)
+            .padding(.vertical, 9)
+            .background(RoundedRectangle(cornerRadius: DS.isGlass ? 14 : 10).fill(Color.primary.opacity(0.035)))
+            .overlay(RoundedRectangle(cornerRadius: DS.isGlass ? 14 : 10).strokeBorder(Color.primary.opacity(0.06), lineWidth: 1))
             HStack(spacing: 6) {
                 Text(feedback ?? "Press Return to save. Or select a word in any app → Services → Fix Spelling in Speak!")
                     .font(DS.callout)
@@ -234,12 +244,13 @@ struct DictionaryPane: View {
             .help("Import, export or load the default dictionary")
 
             Spacer()
-            Text("\(store.entries.count) terms · Double-click a row to edit")
+            Text("Double-click a row to edit")
                 .font(DS.callout)
                 .foregroundStyle(.secondary)
         }
         .padding(.horizontal, 6)
         .padding(.vertical, DS.s1)
+        .background(Color.primary.opacity(0.035))
     }
 
     private func edit(_ ids: Set<TerminologyEntry.ID>) {

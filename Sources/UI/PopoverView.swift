@@ -7,6 +7,7 @@ final class PopoverViewModel: ObservableObject {
         let title: String
         /// Length of the kept audio.
         let seconds: Int
+        var at = Date()
     }
 
     @Published var metrics: Metrics = .zero
@@ -367,19 +368,26 @@ private struct FailedRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
+            // Same layout as a Recent row: time top right, the action under it.
             HStack(alignment: .firstTextBaseline) {
                 Text("\(failed.seconds / 60):\(String(format: "%02d", failed.seconds % 60)) of audio")
                     .foregroundStyle(.secondary)
                 Spacer()
+                Text(RelativeTime.short(Int64(failed.at.timeIntervalSince1970 * 1000)))
+                    .font(DS.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            HStack(alignment: .center) {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 10))
+                    Text("Not transcribed — \(failed.title)")
+                }
+                .font(.system(size: 11))
+                .foregroundStyle(DS.tally)
+                Spacer()
                 Button("Retry", action: onRetry)
                     .controlSize(.small)
             }
-            HStack(spacing: 6) {
-                Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 10))
-                Text("Not transcribed — \(failed.title)")
-            }
-            .font(.system(size: 11))
-            .foregroundStyle(DS.tally)
         }
         .padding(10)
     }

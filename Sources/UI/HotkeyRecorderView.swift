@@ -14,7 +14,12 @@ struct HotkeyRecorderView: View {
     var body: some View {
         VStack(alignment: .trailing, spacing: DS.s1) {
             Button(action: toggle) {
+                // Form greys LabeledContent values; the keycap stays primary
+                // and on one line.
                 Text(recording ? "Press a key…" : EngineText.keycap(binding))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .fixedSize()
                     .frame(minWidth: 110)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 3)
