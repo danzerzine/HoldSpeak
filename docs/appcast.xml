@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>Speak!</title>
+    <link>https://danzerzine.github.io/Speak/</link>
+    <item>
+      <title>Speak! 0.3.3</title>
+      <pubDate>Sun, 04 Oct 2026 15:25:13 GMT</pubDate>
+      <sparkle:version>150</sparkle:version>
+      <sparkle:shortVersionString>0.3.3</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <sparkle:fullReleaseNotesLink>https://github.com/danzerzine/Speak/releases/tag/v0.3.3</sparkle:fullReleaseNotesLink>
+      <description><![CDATA[<ul><li>Product site on GitHub Pages (EN + RU, SEO meta, JSON-LD, sitemap); release uploads Speak.dmg for the site&#x27;s direct download</li><li>In-app updates through Sparkle: signed appcast on GitHub Pages, one-click install from the menu banner</li><li>release.sh: publish the GitHub release to danzerzine/Speak, not gh&#x27;s default upstream repo</li></ul>]]></description>
+      <enclosure url="https://github.com/danzerzine/Speak/releases/download/v0.3.3/Speak-0.3.3.dmg" sparkle:edSignature="CTecECgcom/k+e7vpv420LuMrkqKwrvISz4fGzqWNzwojJn1mAKaDst9RWZUg1cj8LCeBvHfXRiPBX7kQ3ZQCw==" length="18103775" type="application/octet-stream"/>
+    </item>
+  </channel>
+</rss>
