@@ -117,7 +117,6 @@ By default, presses shorter than **150 ms** don't start recording — the key be
 - **Audio** — microphone, language, model (Whisper or Gemini), model download / deletion, Gemini API key
 - **Terms** — terminology dictionary (see below)
 - **History** — clear history and reset metrics
-- **Support**
 
 <p align="center">
   <img src="docs/screenshots/preferences-general.webp?v=4" width="560" alt="Preferences · General" />

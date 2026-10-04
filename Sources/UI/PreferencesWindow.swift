@@ -55,7 +55,7 @@ final class ModelsViewModel: ObservableObject {
 }
 
 enum PrefsTab: String, CaseIterable, Identifiable {
-    case general, audio, terminology, history, support
+    case general, audio, terminology, history
     var id: String { rawValue }
     var title: String {
         switch self {
@@ -63,7 +63,6 @@ enum PrefsTab: String, CaseIterable, Identifiable {
         case .audio:       return "Audio"
         case .terminology: return "Terms"
         case .history:     return "History"
-        case .support:     return "Support"
         }
     }
 }
@@ -104,7 +103,6 @@ struct PreferencesView: View {
                         case .audio:       audioTab
                         case .terminology: EmptyView()
                         case .history:     historyTab
-                        case .support:     supportTab
                         }
                     }
                     .padding(.horizontal, 28)
@@ -491,18 +489,6 @@ struct PreferencesView: View {
             }
         }
     }
-
-    // MARK: - Support
-
-    private var supportTab: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("You can buy me a coffee ☕")
-                .font(.system(size: 13))
-                .foregroundColor(PTT.textBody(scheme))
-
-            AddressRow(label: "USDT (TRC-20)", value: "TJYkdABdvB587bsWbyCLQ25g8JmTqiXs5h")
-        }
-    }
 }
 
 // MARK: - Window chrome
@@ -559,57 +545,6 @@ private struct HistoryRow: View {
             Button {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(text, forType: .string)
-                copied = true
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { copied = false }
-            } label: {
-                if copied {
-                    Text("Copied")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(PTT.accentLink(scheme))
-                } else {
-                    Image(systemName: "doc.on.doc")
-                        .font(.system(size: 12))
-                        .foregroundColor(PTT.textMuted(scheme))
-                }
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .frame(height: 40)
-        .background(
-            RoundedRectangle(cornerRadius: 8).fill(PTT.cardBG(scheme))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 8).stroke(PTT.surfaceBorder(scheme), lineWidth: 1)
-        )
-    }
-}
-
-// MARK: - Address row
-
-private struct AddressRow: View {
-    let label: String
-    let value: String
-    @Environment(\.colorScheme) private var scheme
-    @State private var copied = false
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Text(label)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(PTT.textMuted(scheme))
-
-            Text(value)
-                .font(.system(.caption, design: .monospaced))
-                .foregroundColor(PTT.textBody(scheme))
-                .lineLimit(1)
-                .truncationMode(.middle)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            Button {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(value, forType: .string)
                 copied = true
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { copied = false }
             } label: {
