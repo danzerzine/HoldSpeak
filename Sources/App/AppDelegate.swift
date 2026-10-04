@@ -53,15 +53,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         PreferencesStore.shared.migrateRedesignDefaults()
         PreferencesStore.shared.applyAppearance()
 
+        // SPEAK_SNAPSHOT + SPEAK_DEMO: README screenshots from a throwaway history, never the real one.
+        let env = ProcessInfo.processInfo.environment
+        let demo = env["SPEAK_SNAPSHOT"] != nil && env["SPEAK_DEMO"] != nil
         do {
-            store = try HistoryStore(url: HistoryStore.defaultURL())
+            store = try demo ? SnapshotRunner.demoStore() : HistoryStore(url: HistoryStore.defaultURL())
         } catch {
             pttLog("Failed to open history DB: \(error)")
             NSApp.terminate(nil)
             return
         }
         metrics = MetricsEngine(store: store, resetAnchor: {
-            Int64(PreferencesStore.shared.metricsResetAtMs)
+            demo ? 0 : Int64(PreferencesStore.shared.metricsResetAtMs)
         })
         recorder = AudioRecorder()
         engine = TranscriptionEngine()

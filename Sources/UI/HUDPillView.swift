@@ -53,6 +53,12 @@ final class HUDAmplitudeModel: ObservableObject {
         timer = nil
     }
 
+    /// Snapshot runs only: a fixed waveform instead of the microphone.
+    func showForSnapshot(_ levels: [CGFloat]) {
+        samples = levels
+        scroll = 0
+    }
+
     func push(_ amp: Float) {
         smoothed += (LevelEnvelope.normalize(rms: amp) - smoothed) * 0.6
     }
