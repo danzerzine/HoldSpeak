@@ -384,6 +384,8 @@ private struct GeneralPane: View {
             }
         }
         .formStyle(.grouped)
+        // The window colour behind the groups, as under the pane header.
+        .scrollContentBackground(.hidden)
     }
 
     private var buildNumber: String {
@@ -549,6 +551,8 @@ private struct ShortcutPane: View {
             }
         }
         .formStyle(.grouped)
+        // The window colour behind the groups, as under the pane header.
+        .scrollContentBackground(.hidden)
     }
 }
 
@@ -602,6 +606,8 @@ private struct RecognitionPane: View {
             }
         }
         .formStyle(.grouped)
+        // The window colour behind the groups, as under the pane header.
+        .scrollContentBackground(.hidden)
         .onAppear {
             loadInputDevices()
             modelsVM.refreshManagedSize()
@@ -844,6 +850,33 @@ final class PreferencesWindowController: NSWindowController {
         // Opens where the user left it; the first time, centred.
         if !win.setFrameUsingName(Self.frameName) { win.center() }
         win.setFrameAutosaveName(Self.frameName)
+        // AppKit puts the buttons back on every titlebar layout, so they are moved again after each.
+        for name in [NSWindow.didResizeNotification, NSWindow.didBecomeKeyNotification,
+                     NSWindow.didResignKeyNotification, NSWindow.didExitFullScreenNotification] {
+            NotificationCenter.default.addObserver(forName: name, object: win, queue: .main) { [weak self] _ in
+                self?.placeTrafficLights()
+            }
+        }
+    }
+
+    /// Traffic lights inside the sidebar (concept `.side .lights`): the sidebar's
+    /// inset and padding plus the lights' own 2/6 padding.
+    private func placeTrafficLights() {
+        guard let win = window,
+              let close = win.standardWindowButton(.closeButton),
+              let mini = win.standardWindowButton(.miniaturizeButton),
+              let zoom = win.standardWindowButton(.zoomButton),
+              let container = close.superview?.superview else { return }
+        let origin = DS.isGlass ? CGPoint(x: 24, y: 22) : CGPoint(x: 16, y: 14)
+        let height = close.frame.height + 2 * origin.y
+        var bar = container.frame
+        bar.size.height = height
+        bar.origin.y = win.frame.height - height
+        container.frame = bar
+        let step = mini.frame.minX - close.frame.minX
+        for (i, button) in [close, mini, zoom].enumerated() {
+            button.setFrameOrigin(CGPoint(x: origin.x + CGFloat(i) * step, y: origin.y))
+        }
     }
 
     func present<V: View>(_ view: V) {
@@ -851,6 +884,7 @@ final class PreferencesWindowController: NSWindowController {
             host.rootView = AnyView(view)
         }
         showWindow(nil)
+        placeTrafficLights()
         NSApp.activate(ignoringOtherApps: true)
     }
 }
