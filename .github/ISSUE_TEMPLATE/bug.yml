@@ -1,0 +1,52 @@
+name: Something doesn't work / Что-то не работает
+description: Report a bug in Speak! / Сообщить об ошибке в Speak!
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Write in English or Russian.
+        Спасибо, что сообщили. Можно писать по-русски или по-английски.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened? / Что случилось?
+      description: What you did, what you expected, what you got instead. / Что вы делали, чего ждали и что получилось.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Speak! version / Версия Speak!
+      description: Settings → General → Updates, e.g. "0.3.3 (150)".
+      placeholder: 0.3.3 (150)
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version and Mac / Версия macOS и модель Mac
+      placeholder: macOS 15.5, MacBook Air M1
+    validations:
+      required: true
+  - type: dropdown
+    id: engine
+    attributes:
+      label: Recognition engine / Движок распознавания
+      description: Settings → Recognition.
+      options:
+        - Parakeet
+        - Whisper
+        - Gemini
+        - Not sure / Не знаю
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Log / Журнал
+      description: |
+        The last lines of the log, around the moment it went wrong. In Terminal / Последние строки журнала, около момента ошибки. В Терминале:
+        `tail -n 50 ~/Library/Logs/Speak.log`
+        Dictated text isn't written to the log, only its length; file paths may show your user name. / Текст диктовок в журнал не пишется, только его длина; в путях к файлам может быть имя пользователя.
+      render: text
