@@ -12,6 +12,8 @@ public final class HotkeyMonitor {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var holdStartedAt: Date?
+    /// The binding whose press started the current hold; only its release ends it.
+    private var holdBinding: HotkeyBinding?
 
     /// Set while Preferences is capturing a new binding: events pass through
     /// untouched so pressing the current hotkey doesn't start a dictation and
@@ -69,6 +71,7 @@ public final class HotkeyMonitor {
         eventTap = nil
         runLoopSource = nil
         holdStartedAt = nil
+        holdBinding = nil
     }
 
     /// Returns true if the event should be consumed (dropped).
@@ -77,11 +80,20 @@ public final class HotkeyMonitor {
             // A hold in progress when capture began would never see its release.
             if holdStartedAt != nil {
                 holdStartedAt = nil
+                holdBinding = nil
                 events.send(.cancelHold)
             }
             return false
         }
-        let binding = prefs.hotkey
+        if let active = holdBinding { return handle(event: event, type: type, binding: active) }
+        for binding in prefs.activeHotkeys {
+            let consumed = handle(event: event, type: type, binding: binding)
+            if consumed || holdBinding != nil { return consumed }
+        }
+        return false
+    }
+
+    private func handle(event: CGEvent, type: CGEventType, binding: HotkeyBinding) -> Bool {
         switch binding.kind {
         case .modifier:
             if type == .flagsChanged { handleModifier(event: event, binding: binding) }
@@ -98,8 +110,8 @@ public final class HotkeyMonitor {
         if ourKeyDown && otherGeneralMods != 0 { return }
 
         if ourKeyDown && holdStartedAt == nil {
-            beginHold()
-        } else if !ourKeyDown {
+            beginHold(binding)
+        } else if !ourKeyDown && holdBinding == binding {
             endOrCancel()
         }
     }
@@ -112,25 +124,27 @@ public final class HotkeyMonitor {
         let currentMods = flags & HotkeyBinding.allGeneralMods
         if type == .keyDown {
             guard currentMods == binding.mods else { return false }
-            if holdStartedAt == nil { beginHold() }
+            if holdStartedAt == nil { beginHold(binding) }
             return true
         } else {
             // Only swallow the keyUp that ends our hold — e.g. with ⌥Space bound, a
             // plain Space keyUp must still reach the focused app.
-            guard holdStartedAt != nil else { return false }
+            guard holdBinding == binding else { return false }
             endOrCancel()
             return true
         }
     }
 
-    private func beginHold() {
+    private func beginHold(_ binding: HotkeyBinding) {
         holdStartedAt = Date()
+        holdBinding = binding
         events.send(.startHold)
     }
 
     private func endOrCancel() {
         guard let startedAt = holdStartedAt else { return }
         holdStartedAt = nil
+        holdBinding = nil
         let heldMs = Date().timeIntervalSince(startedAt) * 1000.0
         events.send(heldMs >= Double(prefs.holdThresholdMs) ? .endHold : .cancelHold)
     }

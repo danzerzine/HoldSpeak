@@ -113,6 +113,9 @@ public enum ModelChoice: Hashable, Identifiable {
 
 public final class PreferencesStore: ObservableObject {
     @AppStorage("hotkeyBindingJSON") private var hotkeyBindingJSON: String = ""
+    @AppStorage("hotkey2BindingJSON") private var hotkey2BindingJSON: String = ""
+    /// The second hotkey works alongside the first; switched off it is ignored.
+    @AppStorage("hotkey2Enabled")  public var hotkey2Enabled: Bool = true
     @AppStorage("holdThresholdMs") public var holdThresholdMs: Int = 150
     @AppStorage("hudPosition")     public var hudPosition: HUDPosition = .bottomCenter
     @AppStorage("modelID")         public var modelID: WhisperModelID = .parakeetUltra
@@ -205,6 +208,42 @@ public final class PreferencesStore: ObservableObject {
                 cachedHotkey = (s, newValue)
             }
         }
+    }
+
+    private var cachedHotkey2: (json: String, binding: HotkeyBinding)?
+
+    /// Defaults to whichever of Right Command / Right Option the first hotkey isn't.
+    public var hotkey2: HotkeyBinding {
+        get {
+            let json = hotkey2BindingJSON
+            if let cached = cachedHotkey2, cached.json == json { return cached.binding }
+            let binding: HotkeyBinding
+            if let data = json.data(using: .utf8),
+               let b = try? JSONDecoder().decode(HotkeyBinding.self, from: data) {
+                binding = b
+            } else {
+                binding = hotkey == .rightCommand ? .rightOption : .rightCommand
+            }
+            // Not cached while unset: the default follows the first hotkey.
+            if !json.isEmpty { cachedHotkey2 = (json, binding) }
+            return binding
+        }
+        set {
+            objectWillChange.send()
+            if let data = try? JSONEncoder().encode(newValue),
+               let s = String(data: data, encoding: .utf8) {
+                hotkey2BindingJSON = s
+                cachedHotkey2 = (s, newValue)
+            }
+        }
+    }
+
+    /// Bindings the event tap listens to, first hotkey first.
+    public var activeHotkeys: [HotkeyBinding] {
+        let first = hotkey
+        guard hotkey2Enabled else { return [first] }
+        let second = hotkey2
+        return second == first ? [first] : [first, second]
     }
 
     public static let shared = PreferencesStore()

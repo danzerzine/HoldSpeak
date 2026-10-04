@@ -4,13 +4,15 @@ import Carbon.HIToolbox
 
 struct HotkeyRecorderView: View {
     @ObservedObject var prefs = PreferencesStore.shared
+    /// Edits the second hotkey instead of the first.
+    var second = false
     @State private var recording = false
     @State private var monitor: Any?
     @State private var previousDeviceBits: UInt64 = 0
 
     var body: some View {
         HStack(spacing: 8) {
-            Text(recording ? "Press a key…" : prefs.hotkey.label)
+            Text(recording ? "Press a key…" : binding.label)
                 .frame(minWidth: 160, alignment: .center)
                 .padding(.vertical, 4).padding(.horizontal, 10)
                 .pttSurface(glass: Capsule(), fallback: RoundedRectangle(cornerRadius: 6),
@@ -20,6 +22,11 @@ struct HotkeyRecorderView: View {
             Button(recording ? "Cancel" : "Change") { toggle() }
         }
         .onDisappear { stop() }
+    }
+
+    private var binding: HotkeyBinding {
+        get { second ? prefs.hotkey2 : prefs.hotkey }
+        nonmutating set { if second { prefs.hotkey2 = newValue } else { prefs.hotkey = newValue } }
     }
 
     private func toggle() {
@@ -32,7 +39,7 @@ struct HotkeyRecorderView: View {
         previousDeviceBits = UInt64(NSEvent.modifierFlags.rawValue) & 0xFFFF
         monitor = NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged, .keyDown]) { event in
             if let b = bindingFrom(event) {
-                prefs.hotkey = b
+                binding = b
                 stop()
                 return nil
             }

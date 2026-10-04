@@ -100,7 +100,7 @@ struct PopoverView: View {
         .padding(.vertical, 16)
     }
 
-    private var hotkeyHint: String { prefs.hotkey.label }
+    private var hotkeyHint: String { prefs.activeHotkeys.map(\.label).joined(separator: " · ") }
 
     // MARK: - Stats
 

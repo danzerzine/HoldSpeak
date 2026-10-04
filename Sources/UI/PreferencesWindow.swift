@@ -210,6 +210,18 @@ struct PreferencesView: View {
         VStack(alignment: .leading, spacing: 18) {
             labeledRow("Hotkey") { HotkeyRecorderView() }
 
+            labeledRow("Second hotkey") {
+                HStack(spacing: 12) {
+                    Toggle("", isOn: $prefs.hotkey2Enabled)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                    HotkeyRecorderView(second: true)
+                        .disabled(!prefs.hotkey2Enabled)
+                        .opacity(prefs.hotkey2Enabled ? 1 : 0.5)
+                }
+            }
+
             labeledRow("Hold threshold", alignment: .center) {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 12) {

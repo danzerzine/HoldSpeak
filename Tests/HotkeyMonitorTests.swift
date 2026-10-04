@@ -36,6 +36,22 @@ final class HotkeyMonitorTests: XCTestCase {
         XCTAssertFalse(monitor.handleKey(event: key(kVK_Space, down: false), type: .keyUp, binding: optSpace))
     }
 
+    func test_secondBindingRelease_doesNotEndFirstBindingsHold() {
+        let monitor = HotkeyMonitor()
+        let f13 = HotkeyBinding.key(keyCode: UInt16(kVK_F13), mods: 0)
+        var events: [HotkeyMonitor.Event] = []
+        let sub = monitor.events.sink { events.append($0) }
+        defer { sub.cancel() }
+
+        XCTAssertTrue(monitor.handleKey(event: key(kVK_Space, down: true, flags: .maskAlternate),
+                                        type: .keyDown, binding: optSpace))
+        XCTAssertFalse(monitor.handleKey(event: key(kVK_F13, down: false), type: .keyUp, binding: f13))
+        XCTAssertEqual(events, [.startHold])
+        XCTAssertTrue(monitor.handleKey(event: key(kVK_Space, down: false, flags: .maskAlternate),
+                                        type: .keyUp, binding: optSpace))
+        XCTAssertEqual(events.count, 2)
+    }
+
     func test_otherKeys_areIgnored() {
         let monitor = HotkeyMonitor()
         XCTAssertFalse(monitor.handleKey(event: key(kVK_ANSI_A, down: true, flags: .maskAlternate),
