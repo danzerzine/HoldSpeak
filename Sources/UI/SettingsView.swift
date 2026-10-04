@@ -176,24 +176,24 @@ private struct GeneralPane: View {
             }
 
             Section {
-                Toggle("Launch at login", isOn: $prefs.launchAtLogin)
+                Toggle("Launch at login", isOn: $prefs.launchAtLogin).controlSize(.small)
                     .onAppear(perform: syncLaunchAtLogin)
                     .onChange(of: prefs.launchAtLogin) { _, on in applyLaunchAtLogin(on) }
             }
 
             Section("Appearance") {
-                Picker("Theme", selection: $prefs.appTheme) {
-                    ForEach(AppTheme.allCases) { Text($0.label).tag($0) }
+                LabeledContent("Theme") {
+                    CompactSegmented(label: "Theme", selection: $prefs.appTheme,
+                                     options: AppTheme.allCases.map { ($0, $0.label) })
                 }
-                .pickerStyle(.segmented)
                 .onChange(of: prefs.appTheme) { prefs.applyAppearance() }
 
-                Picker(selection: $prefs.hudPosition) {
-                    ForEach(HUDPosition.allCases) { Text($0.label).tag($0) }
+                LabeledContent {
+                    CompactSegmented(label: "Status pill", selection: $prefs.hudPosition,
+                                     options: HUDPosition.allCases.map { ($0, $0.label) })
                 } label: {
                     RowLabel("Status pill", "Where it appears while you speak")
                 }
-                .pickerStyle(.segmented)
 
                 LabeledContent("Pill color") {
                     Swatches(selection: $prefs.pillColor)
@@ -427,8 +427,8 @@ private struct RecognitionPane: View {
             }
 
             Section("Text") {
-                Toggle("Capitalize first letter", isOn: $prefs.autoCapitalize)
-                Toggle("End with a period", isOn: $prefs.autoPunctuation)
+                Toggle("Capitalize first letter", isOn: $prefs.autoCapitalize).controlSize(.small)
+                Toggle("End with a period", isOn: $prefs.autoPunctuation).controlSize(.small)
             }
         }
         .formStyle(.grouped)
@@ -644,6 +644,7 @@ final class PreferencesWindowController: NSWindowController {
         win.title = "Settings"
         win.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
         win.toolbarStyle = .unified
+        win.titlebarSeparatorStyle = .none
         win.setContentSize(NSSize(width: 780, height: 540))
         self.init(window: win)
         // Opens where the user left it; the first time, centred.

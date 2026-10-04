@@ -27,6 +27,10 @@ enum DS {
     static let rowRadius: CGFloat = 9
     static let cardRadius: CGFloat = 12
     static let alertRadius: CGFloat = 12
+    /// Compact segmented control in settings rows (concept `.mseg`).
+    static let segTrackRadius: CGFloat = 7
+    static let segThumbRadius: CGFloat = 5
+    static let segPadH: CGFloat = 9
 
     static var isGlass: Bool {
         if #available(macOS 26, *) { return true }
@@ -142,6 +146,45 @@ extension View {
         } else {
             buttonStyle(.bordered)
         }
+    }
+}
+
+/// The concept's small segmented control: grey track, white thumb, 11.5 pt
+/// labels. The system one on macOS 26 is larger and fills the choice blue,
+/// which reads too loud inside a settings row.
+struct CompactSegmented<Value: Hashable>: View {
+    let label: String
+    @Binding var selection: Value
+    let options: [(value: Value, title: String)]
+
+    var body: some View {
+        HStack(spacing: 1) {
+            ForEach(options.indices, id: \.self) { i in
+                let option = options[i]
+                let selected = option.value == selection
+                Button { selection = option.value } label: {
+                    Text(option.title)
+                        .font(DS.callout)
+                        .foregroundStyle(selected ? Color.primary : Color.secondary)
+                        .padding(.horizontal, DS.segPadH)
+                        .padding(.vertical, 2)
+                        .background {
+                            if selected {
+                                RoundedRectangle(cornerRadius: DS.segThumbRadius)
+                                    .fill(Color(nsColor: .controlBackgroundColor))
+                                    .shadow(color: .black.opacity(0.15), radius: 1, y: 1)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(selected ? .isSelected : [])
+            }
+        }
+        .padding(2)
+        .background(RoundedRectangle(cornerRadius: DS.segTrackRadius).fill(Color.primary.opacity(0.06)))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(label)
     }
 }
 

@@ -84,6 +84,12 @@ public final class TerminologyStore: ObservableObject {
 
     public func hasSeed(for language: String) -> Bool { seedURL(for: language) != nil }
 
+    /// Languages the user has their own dictionary file for.
+    public func savedLanguages() -> Set<String> {
+        let files = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []
+        return Set(files.filter { $0.hasSuffix(".json") }.map { String($0.dropLast(5)) })
+    }
+
     // MARK: - Active language
 
     public func setActiveLanguage(_ code: String) {

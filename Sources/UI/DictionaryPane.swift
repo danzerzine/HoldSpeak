@@ -45,24 +45,23 @@ struct DictionaryPane: View {
         }
     }
 
-    /// Languages with a bundled dictionary, plus the one open now.
+    /// Languages the user keeps a dictionary for, plus the one they speak and
+    /// the one open now. A bundled default alone (Ukrainian) doesn't add a tab.
     private var languages: [PrimaryLanguage] {
-        var list: [PrimaryLanguage] = [.ru, .en, .uk]
-        if let active = PrimaryLanguage(rawValue: store.activeLanguage), !list.contains(active) {
-            list.append(active)
+        var codes = store.savedLanguages()
+        codes.insert(store.activeLanguage)
+        if PreferencesStore.shared.primaryLanguage != .auto {
+            codes.insert(PreferencesStore.shared.primaryLanguage.rawValue)
         }
-        return list
+        return PrimaryLanguage.allCases.filter { $0 != .auto && codes.contains($0.rawValue) }
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: DS.s3) {
-            Picker("Dictionary", selection: Binding(get: { store.activeLanguage },
-                                                    set: { store.setActiveLanguage($0) })) {
-                ForEach(languages) { Text($0.label).tag($0.rawValue) }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .fixedSize()
+            CompactSegmented(label: "Dictionary language",
+                             selection: Binding(get: { store.activeLanguage },
+                                                set: { store.setActiveLanguage($0) }),
+                             options: languages.map { ($0.rawValue, $0.label) })
 
             correctionRow
 
