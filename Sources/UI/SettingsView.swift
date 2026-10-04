@@ -584,6 +584,10 @@ private struct RecognitionPane: View {
                 } label: {
                     RowLabel("Microphone", "A Bluetooth mic makes headphone audio stutter")
                 }
+                Toggle(isOn: $prefs.duckOutput) {
+                    RowLabel("Quiet speakers while recording", "Music from the speakers drops to 20% so it stays out of the mic")
+                }
+                .controlSize(.small)
             }
 
             Section("Text") {

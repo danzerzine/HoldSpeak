@@ -139,6 +139,8 @@ public final class PreferencesStore: ObservableObject {
     @AppStorage("appTheme")        public var appTheme: AppTheme = .auto
     @AppStorage("autoPunctuation") public var autoPunctuation: Bool = true
     @AppStorage("autoCapitalize")  public var autoCapitalize: Bool = true
+    /// Turn the speakers down while recording so music doesn't reach the mic.
+    @AppStorage("duckOutput")      public var duckOutput: Bool = false
     @AppStorage("metricsResetAtMs") public var metricsResetAtMs: Int = 0
     @AppStorage("inputDevice")     private var inputDeviceRaw: String = InputSelection.avoidBluetooth.rawValue
 

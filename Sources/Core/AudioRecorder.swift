@@ -35,8 +35,9 @@ public final class AudioRecorder {
         capture = Capture(amplitude: amplitude, chunks: chunks, failures: failures)
     }
 
-    public func start(input: InputSelection) {
-        perform("start") { try $0.start(input: input) }
+    /// `duckOutput` lowers the speakers for the recording (see `OutputDucker`).
+    public func start(input: InputSelection, duckOutput: Bool = false) {
+        perform("start") { try $0.start(input: input, duckOutput: duckOutput) }
     }
 
     /// `completion` runs on main once capture has stopped (or the stop stalled), after
@@ -95,6 +96,7 @@ private final class Capture {
     private var tapFormat: AVAudioFormat?
     /// Device whose input mute we lifted in `start`; re-muted in `stop`.
     private var mutedDevice: AudioDeviceID?
+    private let ducker = OutputDucker()
 
     private let abandonLock = NSLock()
     private var _abandoned = false
@@ -115,13 +117,15 @@ private final class Capture {
         queue.async { [self] in
             teardown()
             restoreMute()
+            ducker.restore()
             dropEngine()
         }
     }
 
-    func start(input: InputSelection) throws {
+    func start(input: InputSelection, duckOutput: Bool) throws {
         guard !abandoned, !isRecording else { return }
         self.input = input
+        if duckOutput { ducker.duck() }
         let device = InputDevice.resolve(input)
         if device != engineDevice { dropEngine() }
         unmuteIfNeeded(device ?? InputDevice.defaultID())
@@ -129,6 +133,7 @@ private final class Capture {
             try startEngine(device: device)
         } catch {
             restoreMute()
+            ducker.restore()
             throw error
         }
     }
@@ -136,6 +141,7 @@ private final class Capture {
     func stop() {
         teardown()
         restoreMute()
+        ducker.restore()
     }
 
     // MARK: - Engine
@@ -283,6 +289,7 @@ private final class Capture {
         } catch {
             pttLog("AudioRecorder: resume after configuration change failed: \(error)")
             restoreMute()
+            ducker.restore()
             let failures = self.failures
             DispatchQueue.main.async { failures.send(error) }
         }

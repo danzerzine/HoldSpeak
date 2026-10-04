@@ -67,6 +67,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             demo ? 0 : Int64(PreferencesStore.shared.metricsResetAtMs)
         })
         recorder = AudioRecorder()
+        // Off main: CoreAudio calls can block for a long time after sleep/wake.
+        DispatchQueue.global(qos: .utility).async { OutputDucker().restoreAfterCrash() }
         engine = TranscriptionEngine()
         coordinator = TranscriptionCoordinator(engine: engine, store: store)
         if let files = ProcessInfo.processInfo.environment["HOLDSPEAK_CHECK_FILES"] {
@@ -337,7 +339,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         pttLog("startRecording")
         isRecording = true
         hudGeneration += 1
-        recorder.start(input: PreferencesStore.shared.inputSelection)
+        recorder.start(input: PreferencesStore.shared.inputSelection,
+                       duckOutput: PreferencesStore.shared.duckOutput)
         status.phase = .listening
         overlay.show(.listening, anchor: hudAnchor, screen: hudScreen)
         startLimitTimer()
