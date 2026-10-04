@@ -343,25 +343,34 @@ struct DictionaryPane: View {
     }
 }
 
-/// Misheard variants as small tags (concept `.tag`).
+/// Misheard variants as small tags (concept `.tag`): as many whole tags as fit, then "+N".
 private struct Tags: View {
     let words: [String]
     var body: some View {
+        ViewThatFits(in: .horizontal) {
+            ForEach(Array(stride(from: min(words.count, 6), through: 1, by: -1)), id: \.self) { n in
+                row(n)
+            }
+        }
+        .help(words.joined(separator: ", "))
+    }
+
+    private func row(_ n: Int) -> some View {
         HStack(spacing: 3) {
-            ForEach(words.prefix(6), id: \.self) { w in
+            ForEach(words.prefix(n), id: \.self) { w in
                 Text(w)
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 1)
                     .background(RoundedRectangle(cornerRadius: 4).fill(Color.primary.opacity(0.06)))
+                    .fixedSize(horizontal: n > 1, vertical: false)
             }
-            if words.count > 6 {
-                Text("+\(words.count - 6)").font(.system(size: 11)).foregroundStyle(.tertiary)
+            if words.count > n {
+                Text("+\(words.count - n)").font(.system(size: 11)).foregroundStyle(.tertiary).fixedSize()
             }
         }
-        .lineLimit(1)
-        .help(words.joined(separator: ", "))
     }
 }
 

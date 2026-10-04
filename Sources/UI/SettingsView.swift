@@ -71,6 +71,9 @@ struct SettingsView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
+        // Under the transparent titlebar: the traffic lights sit inside the sidebar and the
+        // pane title on their row, as in the concept.
+        .ignoresSafeArea(.container, edges: .top)
         .frame(minWidth: 700, minHeight: 480)
         .preferredColorScheme(prefs.appTheme.colorScheme)
         .onAppear { pane = initialPane }
@@ -738,11 +741,11 @@ private struct HistoryPane: View {
                         .lineLimit(1)
                         .fixedSize()
                 }
-                .width(104)
+                .width(96)
                 TableColumn("Text") { r in
                     Text(r.cleanedText).lineLimit(2).help(r.cleanedText)
                 }
-                .width(min: 160, ideal: 200)
+                .width(min: 120, ideal: 180)
                 TableColumn("Words") { r in
                     Text("\(r.wordCount)").font(DS.caption).foregroundStyle(.secondary)
                 }
@@ -751,7 +754,7 @@ private struct HistoryPane: View {
                     StatusDot(text: r.inserted ? "Inserted" : "Not inserted", color: r.inserted ? DS.ok : DS.warn)
                         .font(DS.callout)
                 }
-                .width(104)
+                .width(96)
             }
             .contextMenu(forSelectionType: TranscriptionRecord.ID.self) { ids in
                 Button("Copy") { copy(ids) }
