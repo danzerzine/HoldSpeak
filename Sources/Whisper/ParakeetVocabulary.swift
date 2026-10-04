@@ -204,7 +204,7 @@ final class ParakeetVocabulary {
             guard output.wasModified else { return result.text }
             let swaps = output.replacements.filter(\.shouldReplace)
                 .map { "\($0.originalWord)→\($0.replacementWord ?? "")" }
-            pttLog("vocab: \(swaps.joined(separator: ", "))")
+            pttLog("vocab: \(swaps.count) swaps \(logText(swaps.joined(separator: ", ")))")
             return ParakeetVocabulary.keepingFinalPunctuation(of: result.text, in: output.text)
         }
     }

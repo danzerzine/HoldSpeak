@@ -19,8 +19,8 @@ public final class HotkeyMonitor {
     /// Copy of the keyDown a `.key` hold swallowed; re-posted if the press turns out to be a tap.
     private var swallowedKeyDown: CGEvent?
 
-    /// Marks events this monitor re-posts so the tap lets them through.
-    private static let repostMarker: Int64 = 0x48534B /* "HSK" */
+    /// Marks events this monitor re-posts (and the text TextInserter types) so the tap lets them through.
+    static let repostMarker: Int64 = 0x48534B /* "HSK" */
     /// Tests swap this out so they never type into the real session.
     var repost: (CGEvent) -> Void = { $0.post(tap: .cgSessionEventTap) }
 
@@ -34,11 +34,12 @@ public final class HotkeyMonitor {
 
     public func start() {
         guard eventTap == nil else { return }
-        let mask = CGEventMask(
-            (1 << CGEventType.flagsChanged.rawValue) |
-            (1 << CGEventType.keyDown.rawValue) |
-            (1 << CGEventType.keyUp.rawValue)
-        )
+        let types: [CGEventType] = [
+            .flagsChanged, .keyDown, .keyUp,
+            // ⌘-click, ⌥-drag: a held modifier is part of a mouse action, not a dictation.
+            .leftMouseDown, .rightMouseDown, .otherMouseDown,
+        ]
+        let mask = types.reduce(CGEventMask(0)) { $0 | (CGEventMask(1) << $1.rawValue) }
         let selfPtr = Unmanaged.passUnretained(self).toOpaque()
         let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
@@ -96,7 +97,7 @@ public final class HotkeyMonitor {
     }
 
     /// Returns true if the event should be consumed (dropped).
-    private func handle(event: CGEvent, type: CGEventType) -> Bool {
+    func handle(event: CGEvent, type: CGEventType) -> Bool {
         if event.getIntegerValueField(.eventSourceUserData) == Self.repostMarker { return false }
         if Self.isPaused {
             // A hold in progress when capture began would never see its release.
@@ -116,14 +117,18 @@ public final class HotkeyMonitor {
         case .modifier:
             if type == .flagsChanged {
                 handleModifier(event: event, binding: binding)
-            } else if type == .keyDown && holdBinding == binding {
-                // ⌥+letter, ⌘C and the like: the modifier is part of a shortcut, not a dictation.
+            } else if Self.cancelsModifierHold(type) && holdBinding == binding {
+                // ⌥+letter, ⌘C, ⌘-click and the like: the modifier is part of a shortcut, not a dictation.
                 cancelHold()
             }
             return false
         case .key:
             return handleKey(event: event, type: type, binding: binding)
         }
+    }
+
+    private static func cancelsModifierHold(_ type: CGEventType) -> Bool {
+        type == .keyDown || type == .leftMouseDown || type == .rightMouseDown || type == .otherMouseDown
     }
 
     private func handleModifier(event: CGEvent, binding: HotkeyBinding) {

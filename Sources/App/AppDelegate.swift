@@ -298,12 +298,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .sink { [weak self] error in
                 pttLog("Recorder failure: \(error)")
                 guard let self else { return }
+                // Capture died mid-recording (a headset unplugged): drop what it fed, or
+                // the next dictation would start with this half-take. A stalled stop is
+                // different: endRecording already ended it and transcribes those samples.
+                let wasRecording = self.isRecording
+                if wasRecording { _ = self.engine.takeSamples() }
                 self.stopLimitTimer()
                 self.isRecording = false
                 self.status.phase = .idle
                 if case AudioRecorderError.stalled = error {
                     self.showMessage(.error, "Microphone not responding",
                                      "Audio was reset. Hold the key and try again", seconds: 4)
+                } else if wasRecording {
+                    self.showMessage(.error, "Microphone stopped",
+                                     "The recording was lost. Hold the key and try again", seconds: 4)
                 } else {
                     self.overlay.hide()
                 }

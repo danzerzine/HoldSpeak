@@ -110,4 +110,40 @@ final class HotkeyMonitorTests: XCTestCase {
         XCTAssertFalse(monitor.handleKey(event: key(kVK_ANSI_A, down: true, flags: .maskAlternate),
                                          type: .keyDown, binding: optSpace))
     }
+
+    func test_modifierHold_cancelledByMouseClick() {
+        let monitor = makeMonitor()
+        var events: [HotkeyMonitor.Event] = []
+        let sub = monitor.events.sink { events.append($0) }
+        defer { sub.cancel() }
+
+        _ = monitor.handle(event: flags(0x00080000 | 0x40), type: .flagsChanged, binding: rightOption)
+        let click = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown,
+                            mouseCursorPosition: .zero, mouseButton: .left)!
+        XCTAssertFalse(monitor.handle(event: click, type: .leftMouseDown, binding: rightOption))
+        XCTAssertEqual(events, [.startHold, .cancelHold])
+    }
+
+    func test_modifierHold_notCancelledByOwnTypedText() {
+        let monitor = makeMonitor()
+        var events: [HotkeyMonitor.Event] = []
+        let sub = monitor.events.sink { events.append($0) }
+        defer { sub.cancel() }
+
+        _ = monitor.handle(event: flags(0x00080000 | 0x40), type: .flagsChanged, binding: rightOption)
+        // TextInserter types the previous dictation while this one is held.
+        let typed = key(0, down: true, flags: .maskAlternate)
+        typed.setIntegerValueField(.eventSourceUserData, value: HotkeyMonitor.repostMarker)
+        XCTAssertFalse(monitor.handle(event: typed, type: .keyDown))
+        XCTAssertEqual(events, [.startHold])
+    }
+}
+
+final class TextInserterTests: XCTestCase {
+    func test_passwordFieldDetectedBySubrole() {
+        // What a real NSSecureTextField reports through AX (checked 04.10).
+        XCTAssertTrue(TextInserter.isSecureField(role: "AXTextField", subrole: "AXSecureTextField"))
+        XCTAssertFalse(TextInserter.isSecureField(role: "AXTextField", subrole: nil))
+        XCTAssertFalse(TextInserter.isSecureField(role: "AXTextArea", subrole: nil))
+    }
 }

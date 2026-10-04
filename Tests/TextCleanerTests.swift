@@ -109,4 +109,40 @@ final class TextCleanerTests: XCTestCase {
         XCTAssertEqual(TextCleaner.clean("Готово.", dropHallucinations: false), "Готово.")
         XCTAssertEqual(TextCleaner.clean("Готово.", autoPunctuation: false, dropHallucinations: false), "Готово")
     }
+
+    // MARK: - Repeats and brackets must not eat real speech (review 04.10)
+
+    func test_keepsPrepositionBeforeWordWithSameStart() {
+        XCTAssertEqual(TextCleaner.clean("Я сейчас в вагоне"), "Я сейчас в вагоне.")
+        XCTAssertEqual(TextCleaner.clean("Взял с собой зонт"), "Взял с собой зонт.")
+        XCTAssertEqual(TextCleaner.clean("We agreed on one thing"), "We agreed on one thing.")
+    }
+
+    func test_keepsRepeatedDigits() {
+        XCTAssertEqual(TextCleaner.clean("Звони 8 800 555 35 35"), "Звони 8 800 555 35 35.")
+        XCTAssertEqual(TextCleaner.clean("Встреча в 5 50"), "Встреча в 5 50.")
+    }
+
+    func test_keepsDoubledWordAsSpeech() {
+        XCTAssertEqual(TextCleaner.clean("Он сказал да да"), "Он сказал да да.")
+        XCTAssertEqual(TextCleaner.clean("very very good"), "Very very good.")
+    }
+
+    func test_collapsesRepeatedPhraseLoop() {
+        XCTAssertEqual(TextCleaner.clean("открой файл открой файл открой файл"), "Открой файл.")
+    }
+
+    func test_keepsDictatedParentheses() {
+        XCTAssertEqual(TextCleaner.clean("Встреча в среду (если получится) в офисе"),
+                       "Встреча в среду (если получится) в офисе.")
+        XCTAssertEqual(TextCleaner.clean("Встреча в среду (если получится) в офисе", dropHallucinations: false),
+                       "Встреча в среду (если получится) в офисе.")
+    }
+
+    func test_dropsWhisperSoundAnnotations() {
+        XCTAssertEqual(TextCleaner.clean("[музыка] привет"), "Привет.")
+        XCTAssertEqual(TextCleaner.clean("(applause) thanks everyone"), "Thanks everyone.")
+        XCTAssertEqual(TextCleaner.clean("[Music]"), "")
+        XCTAssertEqual(TextCleaner.clean("[BLANK_AUDIO]"), "")
+    }
 }

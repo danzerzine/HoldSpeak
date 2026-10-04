@@ -12,19 +12,26 @@ public enum TextCleaner {
         }
     }
 
+    /// Whisper "sound event" annotations: [музыка], [BLANK_AUDIO], (applause). Only for
+    /// Whisper, and only a single bare word: real dictation can contain brackets
+    /// ("в среду (если получится)"), and Gemini writes them itself.
+    private static let annotationRule = Rule(
+        pattern: #"[\[\(]\s*[\p{L}_]+\s*[\]\)]"#,
+        replacement: "", options: [])
+
     /// Compiled once; NSRegularExpression is safe to share across threads.
+    /// Repeats must end on a word boundary: without it "в вагоне" read as a
+    /// repeated "в", and "8 800" as a repeated "8".
     private static let rules: [Rule] = [
-        // Whisper "sound event" annotations: [музыка], [music], (applause), etc.
-        Rule(pattern: #"[\[\(][^\]\)]{1,40}[\]\)]"#,
-             replacement: "", options: []),
         // Only drop extended hesitation sounds (эээ, эмммм, ummm, uhhh)
         Rule(pattern: #"\b(э{3,}|м{3,}|эм{2,}|um{2,}|uh{2,}|uhm+)\b"#,
              replacement: "", options: [.caseInsensitive]),
-        // Consecutive identical word repeated 3+ times (Whisper stutter)
-        Rule(pattern: #"\b(\w+)(\s+\1){2,}\b"#,
+        // The same word 3+ times in a row (Whisper stutter). Letters only: "35 35 35" is a number.
+        Rule(pattern: #"(?<![\p{L}\p{N}])(\p{L}+)(?:\s+\1(?![\p{L}\p{N}])){2,}"#,
              replacement: "$1", options: [.caseInsensitive]),
-        // Consecutive identical short phrase (up to 5 words) repeated 2+ times.
-        Rule(pattern: #"(\b[\p{L}\p{N}]+(?:\s+[\p{L}\p{N}]+){0,4}[.!?]?)(\s+\1){1,}"#,
+        // The same phrase of 2-5 words repeated (Whisper loop). Single words are left
+        // alone: "да да", "very very good" are speech.
+        Rule(pattern: #"(?<![\p{L}\p{N}])(\p{L}+(?:\s+\p{L}+){1,4}[.!?]?)(?:\s+\1(?![\p{L}\p{N}])){1,}"#,
              replacement: "$1", options: [.caseInsensitive]),
         // Collapse whitespace
         Rule(pattern: #"\s+"#, replacement: " ", options: []),
@@ -78,7 +85,7 @@ public enum TextCleaner {
         dropHallucinations: Bool = true
     ) -> String {
         var s = input
-        for rule in rules {
+        for rule in (dropHallucinations ? [annotationRule] : []) + rules {
             let range = NSRange(s.startIndex..., in: s)
             s = rule.regex.stringByReplacingMatches(in: s, range: range, withTemplate: rule.replacement)
         }
