@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="https://github.com/danzerzine/Speak/releases/latest"><b>Download for macOS</b></a>
-  &nbsp;·&nbsp; macOS 14 or later &nbsp;·&nbsp; Apple Silicon
+  &nbsp;·&nbsp; <a href="https://danzerzine.github.io/Speak/">Website</a> &nbsp;·&nbsp; macOS 14 or later &nbsp;·&nbsp; Apple Silicon
 </p>
 
 <p align="center">

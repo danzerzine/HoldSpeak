@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Speak! — Free offline dictation for Mac. Hold a key, talk, done</title>
+<meta name="description" content="Speak! is a free push-to-talk dictation app for macOS. Hold a key, speak, release: the text appears in any app. Runs offline on your Mac with NVIDIA Parakeet or Whisper. Built for dictating prompts to Claude Code, Codex, Cursor and ChatGPT.">
+<meta name="keywords" content="dictation app for Mac, speech to text Mac, voice typing macOS, offline dictation, push to talk dictation, Whisper Mac app, Parakeet speech recognition, dictate prompts Claude Code, voice input Cursor, free Wispr Flow alternative, SuperWhisper alternative, MacWhisper alternative, Russian English dictation">
+<link rel="canonical" href="https://danzerzine.github.io/Speak/">
+<link rel="alternate" hreflang="en" href="https://danzerzine.github.io/Speak/">
+<link rel="alternate" hreflang="ru" href="https://danzerzine.github.io/Speak/ru/">
+<link rel="alternate" hreflang="x-default" href="https://danzerzine.github.io/Speak/">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="stylesheet" href="assets/site.css">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Speak!">
+<meta property="og:title" content="Speak! — free offline dictation for Mac">
+<meta property="og:description" content="Hold a key, talk, let go. The text is already in the field. Local speech recognition, free, for macOS 14+.">
+<meta property="og:url" content="https://danzerzine.github.io/Speak/">
+<meta property="og:image" content="https://danzerzine.github.io/Speak/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="ru_RU">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Speak! — free offline dictation for Mac">
+<meta name="twitter:description" content="Hold a key, talk, let go. The text is already in the field.">
+<meta name="twitter:image" content="https://danzerzine.github.io/Speak/assets/og.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Speak!",
+  "alternateName": "Speak dictation for Mac",
+  "description": "Free push-to-talk dictation for the macOS menu bar. Hold a key, speak, release, and the text is typed into the focused app. Offline speech recognition with NVIDIA Parakeet or Whisper; optional Google Gemini.",
+  "applicationCategory": "ProductivityApplication",
+  "operatingSystem": "macOS 14 or later",
+  "url": "https://danzerzine.github.io/Speak/",
+  "downloadUrl": "https://github.com/danzerzine/Speak/releases/latest",
+  "image": "https://danzerzine.github.io/Speak/assets/icon-512.png",
+  "screenshot": "https://danzerzine.github.io/Speak/screenshots/hero.webp",
+  "inLanguage": ["en", "ru"],
+  "isAccessibleForFree": true,
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "author": { "@type": "Person", "name": "Daniyar", "url": "https://github.com/danzerzine" },
+  "codeRepository": "https://github.com/danzerzine/Speak"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {"@type": "Question", "name": "Does Speak! work offline?",
+     "acceptedAnswer": {"@type": "Answer", "text": "Yes. The default engine, NVIDIA Parakeet, and the Whisper models run on your Mac. Nothing is uploaded. Only the optional Gemini engine sends audio to Google, on your own API key."}},
+    {"@type": "Question", "name": "Is Speak! free?",
+     "acceptedAnswer": {"@type": "Answer", "text": "Yes. There is no subscription, no account and no word limit. The source code is on GitHub."}},
+    {"@type": "Question", "name": "Which Macs does it run on?",
+     "acceptedAnswer": {"@type": "Answer", "text": "Macs with Apple Silicon on macOS 14 Sonoma or later."}},
+    {"@type": "Question", "name": "Can I mix Russian and English in one sentence?",
+     "acceptedAnswer": {"@type": "Answer", "text": "Yes. Parakeet handles code-switching, so 'сделай rebase на main' keeps 'rebase' in Latin letters. A correction dictionary fixes IT terms that still come out wrong."}},
+    {"@type": "Question", "name": "Does it use the clipboard?",
+     "acceptedAnswer": {"@type": "Answer", "text": "No. Text is typed straight into the focused field, so the clipboard stays as you left it. Password fields are skipped."}},
+    {"@type": "Question", "name": "How does Speak! update?",
+     "acceptedAnswer": {"@type": "Answer", "text": "It checks for a new version once a day. Click Install in the menu and it downloads the update, verifies its signature, replaces itself and restarts."}}
+  ]
+}
+</script>
+</head>
+<body>
+
+<nav class="nav" aria-label="Main">
+  <div class="wrap">
+    <a class="brand" href="./"><img src="assets/favicon-32.png" alt="" width="24" height="24">Speak!</a>
+    <div class="links">
+      <a href="#features">Features</a>
+      <a href="#engines">Engines</a>
+      <a href="#faq">FAQ</a>
+      <a href="ru/" hreflang="ru" lang="ru">Русский</a>
+    </div>
+    <a class="btn small" href="https://github.com/danzerzine/Speak/releases/latest/download/Speak.dmg">Download</a>
+  </div>
+</nav>
+
+<main>
+  <header class="hero wrap">
+    <img class="icon" src="assets/icon-512.png" alt="Speak! app icon" width="112" height="112">
+    <div class="eyebrow"><span class="dot" aria-hidden="true"></span>Dictation for the Mac menu bar</div>
+    <h1>Hold a key. Talk.<br>Let go.</h1>
+    <p class="lede">The text is already in the field. Speak! turns your voice into text on your own Mac, offline and free, in whatever app has focus.</p>
+    <a class="btn" href="https://github.com/danzerzine/Speak/releases/latest/download/Speak.dmg">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.37 12.6c-.02-2.2 1.8-3.26 1.88-3.31-1.03-1.5-2.62-1.7-3.18-1.73-1.35-.14-2.64.8-3.33.8-.69 0-1.74-.78-2.86-.76-1.47.02-2.83.86-3.59 2.17-1.53 2.66-.39 6.6 1.1 8.75.73 1.05 1.6 2.24 2.73 2.2 1.1-.05 1.51-.71 2.84-.71 1.32 0 1.7.71 2.86.69 1.18-.02 1.93-1.07 2.65-2.13.84-1.22 1.18-2.4 1.2-2.47-.03-.01-2.3-.88-2.3-3.5zM14.2 6.13c.6-.73 1.01-1.75.9-2.76-.87.04-1.92.58-2.54 1.31-.56.65-1.05 1.68-.92 2.68.97.07 1.96-.5 2.56-1.23z"/></svg>
+      Download for macOS
+    </a>
+    <p class="meta">Free · macOS 14 or later · Apple Silicon · <a href="https://github.com/danzerzine/Speak">Source on GitHub</a></p>
+    <div class="shot">
+      <img src="screenshots/hero.webp" width="1600" height="1258" alt="The Speak! menu with recent dictations, and the recording pill that shows while you talk" fetchpriority="high">
+    </div>
+  </header>
+
+  <section class="alt" id="why">
+    <div class="wrap">
+      <h2>Typing is the slow part.</h2>
+      <p class="section-lede">People speak at 130–160 words a minute and type at 40–60. When most of your day is writing prompts for Claude Code, Codex, Cursor or ChatGPT, the keyboard sets the pace. Say the whole thought instead and send it.</p>
+      <div class="grid">
+        <div class="card"><div class="big">0.5 s</div><p>From releasing the key to text in the field, for a ten-second phrase on a base M1 MacBook Air.</p></div>
+        <div class="card"><div class="big">0</div><p>bytes uploaded with the local engines. It works on a plane, and nothing is billed.</p></div>
+        <div class="card"><div class="big">$0</div><p>No subscription, no account, no word limit.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="wrap">
+      <h2>How it works</h2>
+      <p class="section-lede">Speak! lives in the menu bar and stays out of sight until you hold the key.</p>
+      <ol class="steps">
+        <li><h3>Hold <kbd>Right ⌥</kbd></h3><p>Or Right ⌘, or any key you set. Short taps are ignored, so your ⌥-shortcuts keep working.</p></li>
+        <li><h3>Speak</h3><p>A small pill shows your voice level and the time. Talk for a few words or five minutes.</p></li>
+        <li><h3>Release</h3><p>The text is typed into the app you're in: a terminal, an editor, a chat, a pull request comment.</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="alt" id="features">
+    <div class="wrap">
+      <h2>Made for people who talk to AI all day</h2>
+      <p class="section-lede">Prompts for coding agents are full of terms, file names and two languages at once. Speak! is tuned for exactly that.</p>
+      <div class="grid">
+        <div class="card"><h3>Russian and English in one sentence</h3><p>“Сделай rebase на main” comes out with <code>rebase</code> spelled the way you write it, not transliterated.</p></div>
+        <div class="card"><h3>Your vocabulary, learned once</h3><p>Select a misheard word in any app, right-click, choose <b>Fix Spelling in Speak!</b>, type it right. Every later dictation gets it right too.</p></div>
+        <div class="card"><h3>Hears what you meant</h3><p>With Parakeet a small extra model matches words that sound like your terms, so “пул реквист” still becomes <i>pull request</i>.</p></div>
+        <div class="card"><h3>Leaves the clipboard alone</h3><p>Text is typed straight into the focused field. Password fields are skipped, and nothing typed there is saved.</p></div>
+        <div class="card"><h3>Never loses a dictation</h3><p>If the text can't be inserted, it waits in the menu, one click from the clipboard. If recognition fails, the audio is kept for a retry.</p></div>
+        <div class="card"><h3>Updates in one click</h3><p>When a new version is out, the menu says so. Click Install: Speak! downloads it, checks the signature and restarts.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="engines">
+    <div class="wrap">
+      <h2>Pick your engine</h2>
+      <p class="section-lede">Local by default. The cloud only if you choose it, on your own key.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Engine</th><th>Runs</th><th>Size</th><th>Best for</th></tr></thead>
+          <tbody>
+            <tr><td><b>NVIDIA Parakeet</b> (default)</td><td>On your Mac</td><td>610 MB</td><td>Speed, Russian and English, offline</td></tr>
+            <tr><td>Whisper Tiny / Small / Turbo</td><td>On your Mac</td><td>75 MB – 1.5 GB</td><td>Languages Parakeet lacks; Turbo for the best Whisper quality</td></tr>
+            <tr><td>Google Gemini</td><td>Google cloud, your API key</td><td>—</td><td>Heavily mixed-language speech</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="meta">Whisper models already downloaded by MacWhisper or another WhisperKit app are found and reused.</p>
+    </div>
+  </section>
+
+  <section class="alt" id="faq">
+    <div class="wrap">
+      <h2>Questions</h2>
+      <details><summary>Does Speak! work offline?</summary><p>Yes. The default engine, NVIDIA Parakeet, and the Whisper models run on your Mac. Nothing is uploaded. Only the optional Gemini engine sends audio to Google, on your own API key.</p></details>
+      <details><summary>Is it really free?</summary><p>Yes. There is no subscription, no account and no word limit. The source code is on <a href="https://github.com/danzerzine/Speak">GitHub</a>.</p></details>
+      <details><summary>Which Macs does it run on?</summary><p>Macs with Apple Silicon on macOS 14 Sonoma or later.</p></details>
+      <details><summary>Why does macOS block the first launch?</summary><p>Speak! is signed by its author, not notarized by Apple. Open System Settings → Privacy &amp; Security, find “Speak was blocked”, and click Open Anyway. You do this once.</p></details>
+      <details><summary>What permissions does it need?</summary><p>Microphone, to hear you while you hold the key. Accessibility, to type the text. Input Monitoring, to notice the hotkey. The welcome window checks them for you.</p></details>
+      <details><summary>How is it different from macOS Dictation?</summary><p>You hold a key instead of toggling a mode, it handles Russian and English in one sentence, it learns your terms, and it keeps every dictation in a history you can copy from.</p></details>
+    </div>
+  </section>
+
+  <section class="cta">
+    <div class="wrap">
+      <h2>Stop typing your prompts.</h2>
+      <p class="section-lede" style="margin-left:auto;margin-right:auto">Download Speak!, hold Right Option, and say the next one.</p>
+      <a class="btn" href="https://github.com/danzerzine/Speak/releases/latest/download/Speak.dmg">Download for macOS</a>
+      <p class="meta">Free · macOS 14 or later · Apple Silicon</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Speak! is a fork of <a href="https://github.com/timmal/HoldSpeak">HoldSpeak</a> by timmal.</span>
+    <span><a href="https://github.com/danzerzine/Speak">GitHub</a> · <a href="https://github.com/danzerzine/Speak/releases">Releases</a> · <a href="https://github.com/danzerzine/Speak/issues">Report a problem</a> · <a href="ru/" hreflang="ru" lang="ru">Русский</a></span>
+  </div>
+</footer>
+</body>
+</html>

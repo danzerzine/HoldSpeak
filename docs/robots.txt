@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://danzerzine.github.io/Speak/sitemap.xml

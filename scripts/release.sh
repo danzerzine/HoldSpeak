@@ -106,7 +106,10 @@ fi
 # The DMG goes up before main: pushing main publishes the feed, and the apps
 # start downloading from the release right away.
 git push origin "$TAG"
-gh release create "$TAG" "$DMG" --repo danzerzine/Speak \
+# Speak.dmg, the same file under a fixed name, backs the site's direct
+# download link (releases/latest/download/Speak.dmg).
+cp "$DMG" dist/Speak.dmg
+gh release create "$TAG" "$DMG" dist/Speak.dmg --repo danzerzine/Speak \
   --title "Speak! $VERSION" \
   --generate-notes
 git push origin main
