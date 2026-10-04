@@ -137,7 +137,7 @@ Whisper reliably recognizes common speech but routinely mangles IT terminology i
 
 With Parakeet the dictionary also works by sound. A small keyword model (parakeet-ctc-110m, ~98 MB, downloaded the first time Parakeet loads) listens for words that sound like a term with a Latin spelling and swaps that spelling in, so `пул реквист` and `Basicampi` come out as `pull request` and `Basecamp` even when that exact misspelling is not in your list. It adds about 60–80 ms per phrase. Whisper is not affected.
 
-> **Tip.** If Whisper keeps mangling the same word or name — a project codename, a library you use daily, a colleague's surname — stop fighting the model. Open **Preferences → Terms**, put the correct spelling in *Canonical*, and add the two or three variants Whisper tends to produce. Next time the word shows up it'll come out right without any hand-editing. That's the whole point of this feature: if you have to fix the transcript by hand every time, it's not dictation — it's a slower way to type. Teach the app once, save the corrections forever.
+> **Tip.** If Whisper keeps mangling the same word or name — a project codename, a library you use daily, a colleague's surname — stop fighting the model. Select the wrong word right where it was inserted, right-click it and pick **Fix Spelling in HoldSpeak**, then type the correct spelling and press Return. Next time the word shows up it'll come out right without any hand-editing. That's the whole point of this feature: if you have to fix the transcript by hand every time, it's not dictation — it's a slower way to type. Teach the app once, save the corrections forever.
 
 <p align="center">
   <img src="docs/screenshots/preferences-terms.webp?v=4" width="560" alt="Preferences · Terms" />
@@ -152,7 +152,11 @@ With Parakeet the dictionary also works by sound. A small keyword model (parakee
 - **Merge** — adds only canonical forms that aren't already in your list. Existing entries and your custom terms are untouched.
 - **Replace** — discards your list entirely and reloads the bundled defaults. Use with care.
 
-**Adding your own terms.** Click **Add term**, put the target form in *Canonical* (`webp`), and list the variants Whisper tends to produce in *Variants* (one per line: `Веб-пи`, `вебпп`, `вепп`, `Беппи`). Matching is case-insensitive by default and respects word boundaries, so `пулреквест` won't hit inside `пулреквестер`.
+**Adding your own terms.** The top of the Terms tab is one row: **Transcribed as** → **Should be**. Type what came out (`бойскап`), press Return, type what it should be (`Basecamp`), press Return again. If `Basecamp` is already in the list, the new spelling joins it; otherwise a new term starts. A spelling belongs to one term only, so adding it moves it from any other term. The list reads the same way: `бойскап, бейскэмп → Basecamp`. The pencil opens the full editor for a term (all spellings, one per line, and a case-sensitive switch). Matching is case-insensitive by default and respects word boundaries, so `пулреквест` won't hit inside `пулреквестер`.
+
+**Fixing a word from any app.** Select a misheard word anywhere — the text field you just dictated into, a note, a browser — right-click it and choose **Fix Spelling in HoldSpeak** (in some apps it sits under **Services**). Preferences open on the Terms tab with the word already in *Transcribed as* and the cursor in *Should be*. To use a keyboard shortcut instead, assign one in System Settings → Keyboard → Keyboard Shortcuts → Services → Text.
+
+The Preferences window can be resized; 560×428 is its minimum.
 
 **Import / Export.** Pure JSON — commit it to a dotfiles repo, share with a team, seed a new machine.
 
