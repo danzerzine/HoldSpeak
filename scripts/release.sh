@@ -33,8 +33,8 @@ AHEAD="$(git rev-list --count origin/main..HEAD)"
 # the release page. Asked first, so nobody waits for it after the build.
 # NOTES_FILE skips the editor; otherwise $EDITOR opens with the commit
 # subjects since the previous tag as hints.
-mkdir -p dist
-NOTES="dist/notes.txt"
+# Outside dist/: the clean build below wipes it.
+NOTES="$(mktemp -t speak-notes)"
 PREV_TAG="$(git describe --tags --abbrev=0 2>/dev/null || true)"
 if [[ -n "${NOTES_FILE:-}" ]]; then
   cp "$NOTES_FILE" "$NOTES"
