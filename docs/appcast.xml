@@ -4,6 +4,16 @@
     <title>Speak!</title>
     <link>https://danzerzine.github.io/Speak/</link>
     <item>
+      <title>Speak! 0.3.4</title>
+      <pubDate>Sun, 04 Oct 2026 18:58:37 GMT</pubDate>
+      <sparkle:version>163</sparkle:version>
+      <sparkle:shortVersionString>0.3.4</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <sparkle:fullReleaseNotesLink>https://github.com/danzerzine/Speak/releases/tag/v0.3.4</sparkle:fullReleaseNotesLink>
+      <description><![CDATA[<ul><li>Quiet speakers while recording: turn it on in Settings → Recognition, and music from your speakers drops to 20% while you hold the key, so it stays out of your dictation. Quick taps don&#x27;t touch the volume.</li></ul>]]></description>
+      <enclosure url="https://github.com/danzerzine/Speak/releases/download/v0.3.4/Speak-0.3.4.dmg" sparkle:edSignature="wR3kKBYXQ3wtY7QKUzxvAvVoXB6KNFN4NTmuZtyI1Ytmze24Me6f3AKgvmWBUIPVKZ+8EnkYakK4joBxgIF/BA==" length="18115439" type="application/octet-stream"/>
+    </item>
+    <item>
       <title>Speak! 0.3.3</title>
       <pubDate>Sun, 04 Oct 2026 15:25:13 GMT</pubDate>
       <sparkle:version>150</sparkle:version>
