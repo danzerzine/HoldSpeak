@@ -10,6 +10,11 @@ final class MenuBarController {
     private let status = AppStatus.shared
     private var cancellables = Set<AnyCancellable>()
 
+    /// Redraws the icon while it animates (level bars, shimmer, loading ring, pop).
+    private var frameTimer: Timer?
+    private var popStarted: Date?
+    private var appearanceObservation: NSKeyValueObservation?
+
     init(viewModel: PopoverViewModel) {
         self.viewModel = viewModel
         statusItem = NSStatusBar.system.statusItem(withLength: StatusItemView.width(for: .ready))
@@ -20,35 +25,81 @@ final class MenuBarController {
         if let btn = statusItem.button {
             btn.target = self
             btn.action = #selector(togglePopover(_:))
-            // The icon is drawn by SwiftUI on top of the button; the button keeps
-            // the clicks and the system highlight while the popover is open.
-            let host = PassThroughHostingView(rootView: StatusItemView())
-            host.translatesAutoresizingMaskIntoConstraints = false
-            btn.addSubview(host)
-            NSLayoutConstraint.activate([
-                host.leadingAnchor.constraint(equalTo: btn.leadingAnchor),
-                host.trailingAnchor.constraint(equalTo: btn.trailingAnchor),
-                host.topAnchor.constraint(equalTo: btn.topAnchor),
-                host.bottomAnchor.constraint(equalTo: btn.bottomAnchor),
-            ])
-            btn.setAccessibilityLabel(status.iconDescription)
+            btn.imagePosition = .imageOnly
+            // Coloured states are drawn for the menu bar's own light or dark look.
+            appearanceObservation = btn.observe(\.effectiveAppearance) { [weak self] _, _ in
+                DispatchQueue.main.async { self?.redraw() }
+            }
         }
+        redraw()
 
-        // The item widens to make room for the level bars while recording.
+        // The menu bar draws a status item from its button's image (views laid
+        // over the button don't reach the screen on recent macOS), so every state
+        // is rendered into that image.
         status.objectWillChange
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] in
-                guard let self else { return }
-                let width = StatusItemView.width(for: self.status.iconState)
-                if self.statusItem.length != width {
-                    NSAnimationContext.runAnimationGroup { ctx in
-                        ctx.duration = DS.reduceMotion ? 0 : 0.3
-                        self.statusItem.length = width
-                    }
-                }
-                self.statusItem.button?.setAccessibilityLabel(self.status.iconDescription)
+            .sink { [weak self] in self?.stateChanged() }
+            .store(in: &cancellables)
+        status.$insertPulse
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self, !DS.reduceMotion else { return }
+                self.popStarted = Date()
+                self.stateChanged()
             }
             .store(in: &cancellables)
+        HUDAmplitudeModel.shared.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in
+                if self?.status.iconState == .listening { self?.redraw() }
+            }
+            .store(in: &cancellables)
+    }
+
+    private func stateChanged() {
+        let width = StatusItemView.width(for: status.iconState)
+        if statusItem.length != width { statusItem.length = width }
+        statusItem.button?.setAccessibilityLabel(status.iconDescription)
+        redraw()
+        let animating = (status.iconState == .transcribing || status.iconState == .loading) && !DS.reduceMotion
+        if animating || popStarted != nil {
+            if frameTimer == nil {
+                frameTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30, repeats: true) { [weak self] _ in
+                    MainActor.assumeIsolated { self?.tick() }
+                }
+            }
+        } else {
+            frameTimer?.invalidate()
+            frameTimer = nil
+        }
+    }
+
+    private func tick() {
+        if let p = popStarted, Date().timeIntervalSince(p) > StatusItemView.popDuration { popStarted = nil }
+        redraw()
+        if popStarted == nil, status.iconState != .transcribing, status.iconState != .loading {
+            frameTimer?.invalidate()
+            frameTimer = nil
+        }
+    }
+
+    private func redraw() {
+        guard let btn = statusItem.button else { return }
+        let state = status.iconState
+        let dark = btn.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        let view = StatusItemView(
+            state: state,
+            levels: HUDAmplitudeModel.shared.samples,
+            time: Date().timeIntervalSinceReferenceDate,
+            pop: popStarted.map { Date().timeIntervalSince($0) } ?? nil)
+            .environment(\.colorScheme, dark ? .dark : .light)
+        let renderer = ImageRenderer(content: view)
+        renderer.scale = btn.window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
+        guard let image = renderer.nsImage else { return }
+        // Plain glyph: let the system tint it for the menu bar like any other icon.
+        image.isTemplate = state == .ready && popStarted == nil
+        btn.image = image
     }
 
     var statusItemFrame: CGRect? {
@@ -85,20 +136,19 @@ final class MenuBarController {
     }
 }
 
-/// Lets clicks fall through to the status bar button underneath.
-private final class PassThroughHostingView<V: View>: NSHostingView<V> {
-    override func hitTest(_ point: NSPoint) -> NSView? { nil }
-}
-
 /// The menu bar icon and its states (concept `.mbitem`): red tally with live level
 /// bars while listening, grey with shimmering bars while transcribing, a badge
 /// when setup is needed or the last dictation failed, dimmed with a ring while
 /// the model loads, and a short pop after a successful insert.
 struct StatusItemView: View {
-    @ObservedObject private var status = AppStatus.shared
-    @ObservedObject private var level = HUDAmplitudeModel.shared
-    @State private var pop = false
+    let state: AppStatus.IconState
+    let levels: [CGFloat]
+    /// Clock for the shimmer and the loading ring.
+    let time: TimeInterval
+    /// Seconds since the insert pop started, nil when not popping.
+    let pop: TimeInterval?
 
+    static let popDuration: TimeInterval = 0.45
     static let glyphHeight: CGFloat = 17
     static var glyphWidth: CGFloat {
         guard let img = BundledIcon.radio, img.size.height > 0 else { return 16 }
@@ -116,45 +166,40 @@ struct StatusItemView: View {
         }
     }
 
-    private var showsBars: Bool {
-        status.iconState == .listening || status.iconState == .transcribing
+    private var showsBars: Bool { state == .listening || state == .transcribing }
+
+    /// Quick overshoot to 1.25 and back (the concept's pop after an insert).
+    private var popScale: CGFloat {
+        guard let pop else { return 1 }
+        let x = min(max(pop / Self.popDuration, 0), 1)
+        return 1 + 0.25 * CGFloat(sin(x * .pi))
     }
 
     var body: some View {
         HStack(spacing: Self.gap) {
             glyph
             if showsBars {
-                LevelBars(levels: barLevels, shimmer: status.iconState == .transcribing)
+                LevelBars(levels: barLevels, shimmer: state == .transcribing, time: time)
                     .frame(width: Self.barsWidth, height: 14)
-                    .transition(.opacity)
             }
         }
         .padding(.horizontal, Self.padding)
-        .frame(height: 22)
-        .foregroundStyle(status.iconState == .listening ? Color.white : Color.primary)
+        .frame(width: Self.width(for: state), height: 22)
+        .foregroundStyle(state == .listening ? Color.white : Color.primary)
         .background(background)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .animation(DS.reduceMotion ? nil : .easeOut(duration: 0.2), value: status.iconState)
-        .onChange(of: status.insertPulse) {
-            guard !DS.reduceMotion else { return }
-            withAnimation(.spring(response: 0.18, dampingFraction: 0.4)) { pop = true }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) { pop = false }
-            }
-        }
     }
 
     private var glyph: some View {
         radioIcon
             .frame(width: Self.glyphWidth, height: Self.glyphHeight)
-            .opacity(status.iconState == .loading ? 0.4 : 1)
-            .scaleEffect(pop ? 1.25 : 1)
+            .opacity(state == .loading ? 0.4 : 1)
+            .scaleEffect(popScale)
             .overlay(alignment: .topTrailing) { badge }
-            .overlay { if status.iconState == .loading { LoadingRing() } }
+            .overlay { if state == .loading { LoadingRing(time: time) } }
     }
 
     @ViewBuilder private var badge: some View {
-        let color: Color? = switch status.iconState {
+        let color: Color? = switch state {
         case .attention: DS.warn
         case .error:     DS.tally
         default:         nil
@@ -165,12 +210,11 @@ struct StatusItemView: View {
                 .frame(width: 7, height: 7)
                 .overlay(Circle().strokeBorder(.black.opacity(0.25), lineWidth: 0.75))
                 .offset(x: 3, y: -1)
-                .transition(.scale)
         }
     }
 
     @ViewBuilder private var background: some View {
-        switch status.iconState {
+        switch state {
         case .listening:
             RoundedRectangle(cornerRadius: 6).fill(DS.tally.opacity(0.92))
         case .transcribing:
@@ -182,10 +226,9 @@ struct StatusItemView: View {
 
     /// Four bars from the newest level samples (concept: every other sample).
     private var barLevels: [CGFloat] {
-        let s = level.samples
-        return (0..<4).map { i in
-            let idx = s.count - 1 - i * 2
-            return idx >= 0 ? s[idx] : 0
+        (0..<4).map { i in
+            let idx = levels.count - 1 - i * 2
+            return idx >= 0 ? levels[idx] : 0
         }
     }
 }
@@ -193,23 +236,9 @@ struct StatusItemView: View {
 private struct LevelBars: View {
     let levels: [CGFloat]
     let shimmer: Bool
+    let time: TimeInterval
 
     var body: some View {
-        if shimmer && !DS.reduceMotion {
-            TimelineView(.animation) { ctx in
-                let t = ctx.date.timeIntervalSinceReferenceDate
-                bars { i in
-                    // ease-in-out wave, 1 s period, 0.15 s apart (concept @keyframes shimmer)
-                    let phase = (t - Double(i) * 0.15).truncatingRemainder(dividingBy: 1)
-                    return 0.25 + 0.5 * (0.5 - 0.5 * cos(phase * 2 * .pi))
-                }
-            }
-        } else {
-            bars { i in shimmer ? 0.4 : levels[i] }
-        }
-    }
-
-    private func bars(_ value: @escaping (Int) -> Double) -> some View {
         HStack(spacing: 2) {
             ForEach(0..<4, id: \.self) { i in
                 RoundedRectangle(cornerRadius: 1.25)
@@ -218,18 +247,25 @@ private struct LevelBars: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+
+    private func value(_ i: Int) -> Double {
+        guard shimmer else { return Double(levels[i]) }
+        if DS.reduceMotion { return 0.4 }
+        // ease-in-out wave, 1 s period, 0.15 s apart (concept @keyframes shimmer)
+        let phase = (time - Double(i) * 0.15).truncatingRemainder(dividingBy: 1)
+        return 0.25 + 0.5 * (0.5 - 0.5 * cos(phase * 2 * .pi))
+    }
 }
 
 /// Spinning arc around the dimmed glyph while the model loads.
 private struct LoadingRing: View {
+    let time: TimeInterval
+
     var body: some View {
-        TimelineView(.animation(paused: DS.reduceMotion)) { ctx in
-            let t = ctx.date.timeIntervalSinceReferenceDate
-            Circle()
-                .trim(from: 0, to: 0.3)
-                .stroke(style: StrokeStyle(lineWidth: 1.6, lineCap: .round))
-                .rotationEffect(.degrees(t.truncatingRemainder(dividingBy: 1) * 360))
-                .frame(width: 18, height: 18)
-        }
+        Circle()
+            .trim(from: 0, to: 0.3)
+            .stroke(style: StrokeStyle(lineWidth: 1.6, lineCap: .round))
+            .rotationEffect(.degrees(DS.reduceMotion ? 0 : time.truncatingRemainder(dividingBy: 1) * 360))
+            .frame(width: 18, height: 18)
     }
 }

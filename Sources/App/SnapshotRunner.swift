@@ -18,6 +18,16 @@ enum SnapshotRunner {
         popoverVM.update = ReleaseInfo(version: "1.4", url: URL(string: "https://example.com")!)
         jobs.append(("popover-failed-update", AnyView(PopoverView(vm: popoverVM)), NSSize(width: DS.popoverWidth, height: 700)))
 
+        let levels: [CGFloat] = (0..<HUDAmplitudeModel.sampleCount).map { CGFloat(($0 * 37) % 10) / 10 }
+        for scheme in [ColorScheme.light, .dark] {
+            for state in [AppStatus.IconState.ready, .listening, .transcribing, .loading, .attention, .error] {
+                jobs.append(("icon-\(scheme == .dark ? "dark" : "light")-\(state)",
+                             AnyView(StatusItemView(state: state, levels: levels, time: 0.3, pop: nil)
+                                .padding(6).environment(\.colorScheme, scheme)),
+                             NSSize(width: 80, height: 34)))
+            }
+        }
+
         let huds: [(String, HUDContent)] = [
             ("listening", .listening),
             ("transcribing", .transcribing),
