@@ -14,6 +14,9 @@ final class MenuBarController {
     private var frameTimer: Timer?
     private var popStarted: Date?
     private var appearanceObservation: NSKeyValueObservation?
+    private var menuBarIsDark: Bool?
+    /// What the static icon was last drawn as; animated frames always redraw.
+    private var lastStaticKey: String?
 
     init(viewModel: PopoverViewModel) {
         self.viewModel = viewModel
@@ -27,8 +30,14 @@ final class MenuBarController {
             btn.action = #selector(togglePopover(_:))
             btn.imagePosition = .imageOnly
             // Coloured states are drawn for the menu bar's own light or dark look.
+            // Setting the image itself re-fires this KVO, so redraw only on a real
+            // light/dark change, or it loops at full CPU.
             appearanceObservation = btn.observe(\.effectiveAppearance) { [weak self] _, _ in
-                DispatchQueue.main.async { self?.redraw() }
+                DispatchQueue.main.async {
+                    guard let self, let btn = self.statusItem.button else { return }
+                    let dark = btn.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+                    if dark != self.menuBarIsDark { self.redraw() }
+                }
             }
         }
         redraw()
@@ -88,6 +97,11 @@ final class MenuBarController {
         guard let btn = statusItem.button else { return }
         let state = status.iconState
         let dark = btn.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        menuBarIsDark = dark
+        let animated = popStarted != nil || state == .listening || state == .transcribing || state == .loading
+        let key = "\(state)-\(dark)"
+        if !animated, key == lastStaticKey { return }
+        lastStaticKey = animated ? nil : key
         let view = StatusItemView(
             state: state,
             levels: HUDAmplitudeModel.shared.samples,
