@@ -1,6 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-  <g transform="translate(512 512) scale(1.24272) translate(-512 -512)">
-    <rect x="422" y="214" width="180" height="418" rx="90" fill="#fff"/>
-    <circle cx="512" cy="760" r="84" fill="#fff"/>
-  </g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><g transform="translate(512 512) scale(1.24272) translate(-512 -512)"><rect width="180" height="418" x="422" y="214" fill="#fff" rx="90"/><circle cx="512" cy="760" r="84" fill="#fff"/></g></svg>
