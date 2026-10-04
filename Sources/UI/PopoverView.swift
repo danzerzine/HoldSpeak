@@ -142,7 +142,7 @@ struct PopoverView: View {
                     .fontWeight(.semibold)
                 Text(mic ? "Speak! can’t hear you until macOS allows the microphone."
                          : "Speak! can hear you but can’t type into other apps.")
-                    .font(.system(size: 12))
+                    .font(DS.detail)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 Button("Open Privacy Settings…") {
@@ -176,7 +176,7 @@ struct PopoverView: View {
             KeyCap(EngineText.hotkey(prefs))
             Text("to talk")
         }
-        .font(.system(size: 12))
+        .font(DS.detail)
         .foregroundStyle(.secondary)
         .padding(.horizontal, DS.s4)
         .padding(.top, DS.s1)
@@ -225,7 +225,7 @@ struct PopoverView: View {
     private func updateRow(_ upd: ReleaseInfo) -> some View {
         HStack(spacing: DS.s2) {
             Text("Speak! \(upd.version) is available")
-                .font(.system(size: 12))
+                .font(DS.detail)
                 .frame(maxWidth: .infinity, alignment: .leading)
             Button("Download") { NSWorkspace.shared.open(upd.url) }
                 .dsProminent()
@@ -238,7 +238,7 @@ struct PopoverView: View {
     @ViewBuilder private var toast: some View {
         if let text = vm.toast {
             Text(text)
-                .font(.system(size: 12))
+                .font(DS.detail)
                 .foregroundStyle(Color(nsColor: .windowBackgroundColor))
                 .padding(.horizontal, 10)
                 .padding(.vertical, DS.s1)

@@ -40,6 +40,10 @@ typography:
     fontFamily: "SF Pro, -apple-system, system-ui"
     fontSize: "11.5px"
     fontWeight: 600
+  detail:
+    fontFamily: "SF Pro, -apple-system, system-ui"
+    fontSize: "12px"
+    fontWeight: 400
   caption:
     fontFamily: "SF Pro, -apple-system, system-ui"
     fontSize: "11px"
@@ -52,6 +56,8 @@ rounded:
   card: "12px"
   alert: "12px"
   hud-classic: "12px"
+  group-glass: "14px"
+  group-classic: "10px"
 spacing:
   s1: "4px"
   s2: "8px"
@@ -152,6 +158,7 @@ A neutral system palette with one live red; colour means state, never decoration
 - **Headline** (bold, 15 pt): the Settings pane title in the header row.
 - **Body** (regular, 13 pt): rows, buttons, HUD text, popover menu rows. **Body Strong** (semibold, 13 pt) for emphasised row titles; HUD state words ("Listening", "Transcribing") are body at semibold.
 - **Callout** (regular, 11.5 pt): captions under rows, status lines, segmented labels, popover stats. **Callout Strong** (semibold, 11.5 pt): popover section label ("Recent").
+- **Detail** (regular, 12 pt): engine card descriptions, popover rows' secondary lines, HUD detail lines, model download status.
 - **Caption** (regular, 11 pt, tabular digits): times and counters in history tables.
 
 ### Named Rules
@@ -183,7 +190,7 @@ Depth is material first. Glass and `.popover` vibrancy separate surfaces from wh
 
 ## Shapes
 
-Continuous macOS corners, sized by component: segmented thumb 5 / track 7, keycap 6, popover rows 9, cards and alerts 12, classic HUD 12. On macOS 26 the HUD and the compact segmented control become capsules, matching the system controls there. Boxed tables (History, Dictionary) and the Settings sidebar card use 14 pt on glass and 10 pt classic; this pair is currently written inline, not in `DS`. Borders are hairlines: 0.5 pt on materials, 1 pt at primary 8 % around boxed tables; a selection border is 2 pt accent.
+Continuous macOS corners, sized by component: segmented thumb 5 / track 7, keycap 6, popover rows 9, cards and alerts 12, classic HUD 12. On macOS 26 the HUD and the compact segmented control become capsules, matching the system controls there. Boxed tables (History, Dictionary) and the Settings sidebar card use `DS.groupRadius`: 14 pt on glass, 10 pt classic. Borders are hairlines: 0.5 pt on materials, 1 pt at primary 8 % around boxed tables; a selection border is 2 pt accent.
 
 ## Components
 

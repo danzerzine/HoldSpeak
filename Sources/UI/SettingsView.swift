@@ -155,7 +155,7 @@ private struct SettingsSidebar: View {
 
     @ViewBuilder private var sidebarBackground: some View {
         if DS.isGlass {
-            Color.clear.dsGlass(RoundedRectangle(cornerRadius: 14))
+            Color.clear.dsGlass(RoundedRectangle(cornerRadius: DS.groupRadius))
         } else {
             VisualEffectBackground(material: .sidebar)
                 .overlay(alignment: .trailing) {
@@ -794,8 +794,8 @@ private struct HistoryPane: View {
             .padding(.vertical, DS.s1)
             .background(Color.primary.opacity(0.035))
         }
-        .clipShape(RoundedRectangle(cornerRadius: DS.isGlass ? 14 : 10))
-        .overlay(RoundedRectangle(cornerRadius: DS.isGlass ? 14 : 10)
+        .clipShape(RoundedRectangle(cornerRadius: DS.groupRadius))
+        .overlay(RoundedRectangle(cornerRadius: DS.groupRadius)
             .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1))
         .padding(.horizontal, DS.s5)
         .padding(.bottom, DS.s5)

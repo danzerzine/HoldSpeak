@@ -80,7 +80,7 @@ struct OnboardingView: View {
                 Text("Listening").fontWeight(.semibold)
                 Text("0:03").foregroundStyle(.secondary).monospacedDigit()
             }
-            .font(.system(size: 12))
+            .font(DS.detail)
             .padding(.horizontal, DS.s3)
             .frame(height: 30)
             .dsGlass(Capsule(), classic: Capsule())
@@ -156,7 +156,7 @@ struct OnboardingView: View {
             if modelsVM.downloading {
                 HStack(spacing: 10) {
                     Text("Downloading \(EngineText.modelName(prefs)) — \(Int(modelsVM.progress * 100))%")
-                        .font(.system(size: 12))
+                        .font(DS.detail)
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                     ProgressView(value: modelsVM.progress)
@@ -325,7 +325,7 @@ private struct EngineCard: View {
                     .padding(.bottom, DS.s1)
                 Text(title).font(.system(size: 13, weight: .semibold))
                 Text(detail)
-                    .font(.system(size: 12))
+                    .font(DS.detail)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }

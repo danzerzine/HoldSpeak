@@ -65,7 +65,7 @@ struct DictionaryPane: View {
                                                     set: { store.setActiveLanguage($0) }),
                                  options: languages.map { ($0.rawValue, $0.label) })
                 Text(store.entries.count == 1 ? "1 term" : "\(store.entries.count) terms")
-                    .font(.system(size: 12))
+                    .font(DS.detail)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
             }
@@ -94,8 +94,8 @@ struct DictionaryPane: View {
                 Divider()
                 tableFooter
             }
-            .clipShape(RoundedRectangle(cornerRadius: DS.isGlass ? 14 : 10))
-            .overlay(RoundedRectangle(cornerRadius: DS.isGlass ? 14 : 10)
+            .clipShape(RoundedRectangle(cornerRadius: DS.groupRadius))
+            .overlay(RoundedRectangle(cornerRadius: DS.groupRadius)
                 .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1))
         }
         .padding(.horizontal, DS.s5)
@@ -143,8 +143,8 @@ struct DictionaryPane: View {
             // Concept `.grp`: the always-open row sits in a grey group.
             .padding(.horizontal, DS.s3)
             .padding(.vertical, 9)
-            .background(RoundedRectangle(cornerRadius: DS.isGlass ? 14 : 10).fill(Color.primary.opacity(0.035)))
-            .overlay(RoundedRectangle(cornerRadius: DS.isGlass ? 14 : 10).strokeBorder(Color.primary.opacity(0.06), lineWidth: 1))
+            .background(RoundedRectangle(cornerRadius: DS.groupRadius).fill(Color.primary.opacity(0.035)))
+            .overlay(RoundedRectangle(cornerRadius: DS.groupRadius).strokeBorder(Color.primary.opacity(0.06), lineWidth: 1))
             HStack(spacing: 6) {
                 Text(feedback ?? "Press Return to save. Or select a word in any app → Services → Fix Spelling in Speak!")
                     .font(DS.callout)
@@ -399,7 +399,7 @@ private struct EditorSheet: View {
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                 TextEditor(text: $variantsText)
-                    .font(.system(size: 12))
+                    .font(DS.detail)
                     .frame(minHeight: 120)
                     .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Color.primary.opacity(0.14), lineWidth: 1))
             }

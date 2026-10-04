@@ -207,7 +207,7 @@ struct HUDPill: View {
         ElapsedMeta(limitMinutes: prefs.maxRecordingMinutes, secondary: secondaryText)
         if let lang = prefs.primaryLanguage.whisperCode {
             Text(lang.uppercased())
-                .font(.system(size: 12).monospacedDigit())
+                .font(DS.detail.monospacedDigit())
                 .foregroundStyle(secondaryText)
         }
     }
@@ -216,7 +216,7 @@ struct HUDPill: View {
         Spinner(primary: primaryText, track: solid ? .white.opacity(0.4) : Color.primary.opacity(0.3))
         Text("Transcribing").fontWeight(.semibold)
         Text(EngineText.short(prefs))
-            .font(.system(size: 12))
+            .font(DS.detail)
             .foregroundStyle(secondaryText)
     }
 
@@ -238,7 +238,7 @@ struct HUDPill: View {
         VStack(alignment: .leading, spacing: 1) {
             Text(title).fontWeight(.semibold)
             Text(detail)
-                .font(.system(size: 12))
+                .font(DS.detail)
                 .foregroundStyle(secondaryText)
         }
         .lineLimit(1)
@@ -290,7 +290,7 @@ private struct ElapsedMeta: View {
                 Text(Self.clock(elapsed)).foregroundStyle(secondary)
             }
         }
-        .font(.system(size: 12).monospacedDigit())
+        .font(DS.detail.monospacedDigit())
     }
 
     static func clock(_ s: Int) -> String { "\(s / 60):" + String(format: "%02d", s % 60) }

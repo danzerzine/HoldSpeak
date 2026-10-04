@@ -32,6 +32,9 @@ enum DS {
     static let segThumbRadius: CGFloat = 5
     static let segPadH: CGFloat = 9
 
+    /// Boxed tables and groups in Settings: 14 on macOS 26, 10 on 14-15.
+    static var groupRadius: CGFloat { isGlass ? 14 : 10 }
+
     static var isGlass: Bool {
         if #available(macOS 26, *) { return true }
         return false
@@ -49,6 +52,8 @@ enum DS {
     /// Captions under rows, status lines.
     static let callout = Font.system(size: 11.5)
     static let calloutStrong = Font.system(size: 11.5, weight: .semibold)
+    /// Detail text: card descriptions, popover rows, HUD lines.
+    static let detail = Font.system(size: 12)
     /// Times and counters: always tabular digits.
     static let caption = Font.system(size: 11).monospacedDigit()
 
