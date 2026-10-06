@@ -60,7 +60,9 @@ final class TranscriptionCoordinator {
             terminology: TerminologyStore.shared.entries(for: lang),
             autoPunctuation: prefs.autoPunctuation,
             autoCapitalize: prefs.autoCapitalize,
-            dropHallucinations: prefs.engine == .whisper
+            // The blacklist targets Whisper's decoder inventing subtitle boilerplate on
+            // silence. Parakeet and Gemini don't, so there "Спасибо" is real speech.
+            dropHallucinations: prefs.engine == .whisper && !prefs.modelID.isParakeet
         )
         pttLog("cleaned: \(logText(cleaned))")
         guard !cleaned.isEmpty else { return .empty }

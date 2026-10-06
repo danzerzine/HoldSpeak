@@ -93,7 +93,7 @@ public enum TextCleaner {
         guard !s.isEmpty else { return "" }
         if s.rangeOfCharacter(from: .alphanumerics) == nil { return "" }
         // Drop the utterance entirely if its normalized form is a known Whisper hallucination.
-        // Off for Gemini: it doesn't invent these on silence, so "Спасибо" is real speech.
+        // Off for Gemini and Parakeet: they don't invent these on silence, so "Спасибо" is real speech.
         if dropHallucinations, isHallucination(s) { return "" }
         s = canonicalize(s, terminology: terminology)
         if autoCapitalize {
