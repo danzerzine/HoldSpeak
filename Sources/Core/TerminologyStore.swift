@@ -127,10 +127,21 @@ public final class TerminologyStore: ObservableObject {
     private func loadFromDisk(_ language: String) -> [TerminologyEntry]? {
         let url = fileURL(for: language)
         guard FileManager.default.fileExists(atPath: url.path),
-              let data = try? Data(contentsOf: url),
-              let decoded = try? JSONDecoder().decode([TerminologyEntry].self, from: data)
+              let data = try? Data(contentsOf: url)
         else { return nil }
-        return decoded
+        do {
+            return try JSONDecoder().decode([TerminologyEntry].self, from: data)
+        } catch {
+            // The next save would overwrite the user's dictionary: keep it beside.
+            let backup = url.appendingPathExtension("corrupt-\(Int(Date.now.timeIntervalSince1970))")
+            do {
+                try FileManager.default.moveItem(at: url, to: backup)
+                pttLog("TerminologyStore: \(language).json doesn't decode (\(error)), moved to \(backup.lastPathComponent)")
+            } catch {
+                pttLog("TerminologyStore: couldn't move aside undecodable \(language).json: \(error)")
+            }
+            return nil
+        }
     }
 
     private func seedEntries(for language: String) -> [TerminologyEntry]? {
