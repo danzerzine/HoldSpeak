@@ -58,12 +58,6 @@ final class MenuBarController {
                 self.stateChanged()
             }
             .store(in: &cancellables)
-        HUDAmplitudeModel.shared.objectWillChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] in
-                if self?.status.iconState == .listening { self?.redraw() }
-            }
-            .store(in: &cancellables)
     }
 
     private func stateChanged() {
@@ -71,7 +65,10 @@ final class MenuBarController {
         if statusItem.length != width { statusItem.length = width }
         statusItem.button?.setAccessibilityLabel(status.iconDescription)
         redraw()
-        let animating = (status.iconState == .transcribing || status.iconState == .loading) && !DS.reduceMotion
+        // Listening follows the microphone at the frame rate (not each level update,
+        // which came at 120 a second); Reduce Motion doesn't hide the level.
+        let animating = status.iconState == .listening
+            || ((status.iconState == .transcribing || status.iconState == .loading) && !DS.reduceMotion)
         if animating || popStarted != nil {
             if frameTimer == nil {
                 frameTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30, repeats: true) { [weak self] _ in
@@ -87,7 +84,7 @@ final class MenuBarController {
     private func tick() {
         if let p = popStarted, Date().timeIntervalSince(p) > StatusItemView.popDuration { popStarted = nil }
         redraw()
-        if popStarted == nil, status.iconState != .transcribing, status.iconState != .loading {
+        if popStarted == nil, ![.listening, .transcribing, .loading].contains(status.iconState) {
             frameTimer?.invalidate()
             frameTimer = nil
         }
