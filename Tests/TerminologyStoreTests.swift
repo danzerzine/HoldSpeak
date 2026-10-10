@@ -37,7 +37,8 @@ final class TerminologyStoreTests: XCTestCase {
         let backups = try FileManager.default.contentsOfDirectory(atPath: dir.path)
             .filter { $0.hasPrefix("ru.json.corrupt-") }
         XCTAssertEqual(backups.count, 1)
-        XCTAssertEqual(try Data(contentsOf: dir.appendingPathComponent(backups[0])), original)
+        let backup = try XCTUnwrap(backups.first)
+        XCTAssertEqual(try Data(contentsOf: dir.appendingPathComponent(backup)), original)
         XCTAssertEqual(store.entries.map(\.canonical), ["New"])
     }
 

@@ -84,7 +84,7 @@ final class TranscriptionCoordinator {
             inserted: insertion == .inserted
         )
         do {
-            try store.append(record)
+            _ = try store.append(record)
         } catch {
             pttLog("History write failed: \(error)")
             // With no text field the history row is the only copy of the dictation.

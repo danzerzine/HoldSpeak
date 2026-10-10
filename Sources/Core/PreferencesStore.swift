@@ -174,9 +174,13 @@ public final class PreferencesStore: ObservableObject {
         get {
             if let cached = cachedGeminiKey { return cached }
             // A failed read isn't cached: the next dictation asks the Keychain again.
-            guard let key = try? Keychain.read(Self.geminiKeyAccount) else { return nil }
-            cachedGeminiKey = .some(key)
-            return key
+            do {
+                let key = try Keychain.read(Self.geminiKeyAccount)
+                cachedGeminiKey = .some(key)
+                return key
+            } catch {
+                return nil
+            }
         }
         set { saveGeminiAPIKey(newValue) }
     }
