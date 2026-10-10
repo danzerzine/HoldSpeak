@@ -1,6 +1,7 @@
 import XCTest
 @testable import HoldSpeakCore
 
+@MainActor
 final class RedesignDefaultsTests: XCTestCase {
     private func freshDefaults() -> UserDefaults {
         let name = "RedesignDefaultsTests-\(UUID().uuidString)"

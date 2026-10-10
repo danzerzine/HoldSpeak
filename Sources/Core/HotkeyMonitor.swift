@@ -1,6 +1,7 @@
 import Cocoa
 import Combine
 
+@MainActor
 public final class HotkeyMonitor {
     /// `.startHold` fires immediately on key press so recording can begin without
     /// losing the first syllables. If the key is released before `holdThresholdMs`
@@ -20,14 +21,14 @@ public final class HotkeyMonitor {
     private var swallowedKeyDown: CGEvent?
 
     /// Marks events this monitor re-posts (and the text TextInserter types) so the tap lets them through.
-    static let repostMarker: Int64 = 0x48534B /* "HSK" */
+    nonisolated static let repostMarker: Int64 = 0x48534B /* "HSK" */
     /// Tests swap this out so they never type into the real session.
     var repost: (CGEvent) -> Void = { $0.post(tap: .cgSessionEventTap) }
 
     /// Set while Preferences is capturing a new binding: events pass through
     /// untouched so pressing the current hotkey doesn't start a dictation and
     /// still reaches the recorder. Main thread only (the tap runs on the main run loop).
-    nonisolated(unsafe) public static var isPaused = false
+    public static var isPaused = false
 
     private let prefs: PreferencesStore
     public init(prefs: PreferencesStore = .shared) { self.prefs = prefs }
@@ -48,18 +49,21 @@ public final class HotkeyMonitor {
             eventsOfInterest: mask,
             callback: { _, type, event, userInfo in
                 guard let userInfo = userInfo else { return Unmanaged.passUnretained(event) }
-                let this = Unmanaged<HotkeyMonitor>.fromOpaque(userInfo).takeUnretainedValue()
-                if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-                    // macOS disables the tap if the main thread stalls; without this
-                    // the hotkey stays dead until relaunch.
-                    pttLog("HotkeyMonitor: event tap disabled (\(type.rawValue)) — re-enabling")
-                    if let tap = this.eventTap { CGEvent.tapEnable(tap: tap, enable: true) }
-                    return Unmanaged.passUnretained(event)
+                // The tap's run loop source sits on the main run loop, so this runs on main.
+                // Returns whether to drop the event (keeps the non-Sendable CGEvent out of the result).
+                nonisolated(unsafe) let event = event
+                let consume = MainActor.assumeIsolated { () -> Bool in
+                    let this = Unmanaged<HotkeyMonitor>.fromOpaque(userInfo).takeUnretainedValue()
+                    if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+                        // macOS disables the tap if the main thread stalls; without this
+                        // the hotkey stays dead until relaunch.
+                        pttLog("HotkeyMonitor: event tap disabled (\(type.rawValue)) — re-enabling")
+                        if let tap = this.eventTap { CGEvent.tapEnable(tap: tap, enable: true) }
+                        return false
+                    }
+                    return this.handle(event: event, type: type)
                 }
-                if this.handle(event: event, type: type) {
-                    return nil
-                }
-                return Unmanaged.passUnretained(event)
+                return consume ? nil : Unmanaged.passUnretained(event)
             },
             userInfo: selfPtr
         )

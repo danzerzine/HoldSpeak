@@ -88,6 +88,7 @@ final class AppStatus: ObservableObject {
 }
 
 /// Human names for the engine and model, shared by the popover, HUD and Settings.
+@MainActor
 enum EngineText {
     static func modelName(_ prefs: PreferencesStore = .shared) -> String {
         switch prefs.engine {

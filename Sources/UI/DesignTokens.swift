@@ -201,6 +201,7 @@ struct CompactSegmented<Value: Hashable>: View {
     }
 }
 
+@MainActor
 enum Announce {
     /// Tells VoiceOver about a state change ("Listening", errors).
     static func say(_ text: String) {

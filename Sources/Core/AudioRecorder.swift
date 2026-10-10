@@ -21,6 +21,7 @@ public enum AudioRecorderError: Error {
 /// abandons a wedged capture and continues with a fresh engine on a fresh queue.
 ///
 /// Public methods must be called on the main thread; `failures` is delivered on main.
+@MainActor
 public final class AudioRecorder {
     public let amplitude = PassthroughSubject<Float, Never>()
     public let chunks = PassthroughSubject<AVAudioPCMBuffer, Never>()
@@ -46,15 +47,16 @@ public final class AudioRecorder {
 
     /// `completion` runs on main once capture has stopped (or the stop stalled), after
     /// every chunk captured so far has been delivered.
-    public func stop(completion: (() -> Void)? = nil) {
+    public func stop(completion: (@MainActor () -> Void)? = nil) {
         perform("stop", completion: completion) { $0.stop() }
     }
 
-    private final class Op { var finished = false }
+    /// Only touched on main.
+    @MainActor private final class Op { var finished = false }
 
     private func perform(_ label: String,
-                         completion: (() -> Void)? = nil,
-                         _ work: @escaping (Capture) throws -> Void) {
+                         completion: (@MainActor () -> Void)? = nil,
+                         _ work: @escaping @Sendable (Capture) throws -> Void) {
         let c = capture
         let op = Op()
         c.queue.async { [weak self] in
@@ -83,7 +85,8 @@ public final class AudioRecorder {
 
 /// One engine plus the serial queue that owns it. Every method except `abandon()`
 /// runs on `queue`.
-private final class Capture {
+// @unchecked Sendable: state is confined to `queue` (`_abandoned` to `abandonLock`); the subjects are only sent to.
+private final class Capture: @unchecked Sendable {
     let queue = DispatchQueue(label: "HoldSpeak.audio", qos: .userInitiated)
 
     private let amplitude: PassthroughSubject<Float, Never>
@@ -177,7 +180,8 @@ private final class Capture {
         configObserver = NotificationCenter.default.addObserver(
             forName: .AVAudioEngineConfigurationChange, object: engine, queue: nil
         ) { [weak self] _ in
-            self?.queue.async { self?.handleConfigurationChange() }
+            guard let self else { return }
+            self.queue.async { [weak self] in self?.handleConfigurationChange() }
         }
         self.engine = engine
         engineDevice = device
@@ -224,7 +228,8 @@ private final class Capture {
                                                         channels: hwFormat.channelCount)
         }
 
-        var tapCount = 0
+        // Only the audio tap thread touches these (the tap callback is serial).
+        nonisolated(unsafe) var tapCount = 0
         var objcError: NSError?
         let installed = HSCatchObjCException({
             inputNode.removeTap(onBus: 0)
@@ -298,8 +303,7 @@ private final class Capture {
             pttLog("AudioRecorder: resume after configuration change failed: \(error)")
             restoreMute()
             ducker.restore()
-            let failures = self.failures
-            DispatchQueue.main.async { failures.send(error) }
+            DispatchQueue.main.async { self.failures.send(error) }
         }
     }
 
@@ -341,12 +345,14 @@ private final class Capture {
         let capacity = AVAudioFrameCount(Double(mono.frameLength) * ratio + 128)
         guard let out = AVAudioPCMBuffer(pcmFormat: targetFormat, frameCapacity: capacity) else { return nil }
         var err: NSError?
-        var didProvide = false
+        // The input block runs synchronously inside `convert(to:error:)`.
+        nonisolated(unsafe) var didProvide = false
+        nonisolated(unsafe) let provided = mono
         converter.convert(to: out, error: &err) { _, status in
             if didProvide { status.pointee = .noDataNow; return nil }
             didProvide = true
             status.pointee = .haveData
-            return mono
+            return provided
         }
         guard err == nil, out.frameLength > 0 else { return nil }
         return out

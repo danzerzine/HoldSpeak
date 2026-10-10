@@ -3,6 +3,7 @@ import Combine
 import Carbon.HIToolbox
 @testable import HoldSpeakCore
 
+@MainActor
 final class HotkeyMonitorTests: XCTestCase {
     private let optSpace = HotkeyBinding.key(keyCode: UInt16(kVK_Space), mods: 0x00080000)
 

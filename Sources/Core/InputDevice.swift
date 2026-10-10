@@ -2,7 +2,7 @@ import CoreAudio
 import Foundation
 
 /// Which microphone the app records from. Persisted as `rawValue`.
-public enum InputSelection: Equatable, Hashable {
+public enum InputSelection: Equatable, Hashable, Sendable {
     /// Whatever macOS has selected as the input device.
     case systemDefault
     /// System default, except the built-in mic when the default is Bluetooth: opening a

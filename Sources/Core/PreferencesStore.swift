@@ -119,6 +119,7 @@ public enum ModelChoice: Hashable, Identifiable {
     }
 }
 
+@MainActor
 public final class PreferencesStore: ObservableObject {
     @AppStorage("hotkeyBindingJSON") private var hotkeyBindingJSON: String = ""
     @AppStorage("hotkey2BindingJSON") private var hotkey2BindingJSON: String = ""

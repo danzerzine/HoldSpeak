@@ -90,7 +90,7 @@ public final class HistoryStore: HistoryStoring {
 
     public func append(_ record: TranscriptionRecord) throws -> TranscriptionRecord {
         let saved = try dbQueue.write { db -> TranscriptionRecord in
-            var r = record
+            let r = record
             try r.insert(db)
             try db.execute(
                 sql: "INSERT INTO utterance_stats (createdAt, wordCount, durationMs) VALUES (?, ?, ?)",
