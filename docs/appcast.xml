@@ -4,6 +4,16 @@
     <title>Speak!</title>
     <link>https://danzerzine.github.io/Speak/</link>
     <item>
+      <title>Speak! 0.3.5</title>
+      <pubDate>Sat, 10 Oct 2026 10:03:10 GMT</pubDate>
+      <sparkle:version>180</sparkle:version>
+      <sparkle:shortVersionString>0.3.5</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <sparkle:fullReleaseNotesLink>https://github.com/danzerzine/Speak/releases/tag/v0.3.5</sparkle:fullReleaseNotesLink>
+      <description><![CDATA[<ul><li>Fixed a rare crash when you tap the hotkey very briefly.</li><li>If there&#x27;s no text field to type into and the dictation can&#x27;t be saved, the text goes to the clipboard and Speak tells you so.</li><li>Your dictionary is never overwritten if Speak can&#x27;t read it: the file is set aside instead.</li><li>A lone &quot;Спасибо&quot; is no longer dropped with the Parakeet model.</li><li>Settings shows when saving your Gemini key fails; the menu bar icon uses less CPU while you dictate.</li></ul>]]></description>
+      <enclosure url="https://github.com/danzerzine/Speak/releases/download/v0.3.5/Speak-0.3.5.dmg" sparkle:edSignature="zT7RCir6OcN9M+2hiQeD/CH6zSZNrj7dlRfQUMPjTVM0PogeUZN+PIsTCNwHUaSO245LnsUDWN7rpWf/0n73CA==" length="18320657" type="application/octet-stream"/>
+    </item>
+    <item>
       <title>Speak! 0.3.4</title>
       <pubDate>Sun, 04 Oct 2026 18:58:37 GMT</pubDate>
       <sparkle:version>163</sparkle:version>
