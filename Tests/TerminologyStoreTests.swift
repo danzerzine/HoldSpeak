@@ -23,6 +23,24 @@ final class TerminologyStoreTests: XCTestCase {
         XCTAssertEqual(newStore().entries, [])
     }
 
+    /// A dictionary file that no longer decodes is the user's data: it is moved aside,
+    /// never overwritten by the next save.
+    @MainActor
+    func test_undecodableFile_isMovedAsideBeforeAnySave() throws {
+        let dir = tempDir()
+        let original = Data(#"[{"canonical":"Kubernetes","variants":["кубер"]}]"#.utf8) // no id: won't decode
+        try original.write(to: dir.appendingPathComponent("ru.json"))
+
+        let store = newStore(directory: dir)
+        store.add(TerminologyEntry(canonical: "New", variants: []))
+
+        let backups = try FileManager.default.contentsOfDirectory(atPath: dir.path)
+            .filter { $0.hasPrefix("ru.json.corrupt-") }
+        XCTAssertEqual(backups.count, 1)
+        XCTAssertEqual(try Data(contentsOf: dir.appendingPathComponent(backups[0])), original)
+        XCTAssertEqual(store.entries.map(\.canonical), ["New"])
+    }
+
     @MainActor
     func test_restore_putsEntryBackAtItsPosition() {
         let store = newStore()
