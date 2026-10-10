@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 
 /// Runs the post-recording pipeline: finalize → clean → insert → persist.
 /// UI reactions (notifications, popover refresh) stay in AppDelegate.
@@ -10,6 +10,8 @@ final class TranscriptionCoordinator {
         case inserted
         case skippedSecureField
         case noFocus
+        /// No text field and the history write failed: the text went to the clipboard.
+        case noFocusCopied
         /// The engine couldn't transcribe (no model, bad key, quota, network).
         case failed(TranscriptionFailure)
     }
@@ -81,7 +83,17 @@ final class TranscriptionCoordinator {
             language: result.language,
             inserted: insertion == .inserted
         )
-        _ = try? store.append(record)
+        do {
+            try store.append(record)
+        } catch {
+            pttLog("History write failed: \(error)")
+            // With no text field the history row is the only copy of the dictation.
+            if insertion == .noFocus {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(cleaned, forType: .string)
+                return .noFocusCopied
+            }
+        }
 
         switch insertion {
         case .inserted:          return .inserted

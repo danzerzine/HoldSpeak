@@ -454,6 +454,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 showMessage(.warn, "No text field — nothing typed",
                             "Saved to history. Open the menu to copy it", seconds: 4)
             }
+        case .noFocusCopied:
+            showMessage(.warn, "No text field — nothing typed",
+                        "History couldn’t save it, so the text is on the clipboard", seconds: 5)
         case .failed(let failure):
             if failure == .whisperModelNotReady, status.modelLoading {
                 showMessage(.loading, "Loading \(EngineText.modelName())",
