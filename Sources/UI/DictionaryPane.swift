@@ -30,6 +30,10 @@ struct DictionaryPane: View {
     /// The last deleted entry and its position, while Undo is offered.
     @State private var removed: (entry: TerminologyEntry, index: Int)?
     @FocusState private var correctionFocus: CorrectionField?
+    @State private var confirmingDefaults = false
+    /// Terms read from a file, while the Add / Replace choice is open.
+    @State private var pendingImport: [TerminologyEntry]?
+    @State private var errorAlert: (title: String, detail: String)?
 
     @State private var editing: TerminologyEntry?
     @State private var selection = Set<TerminologyEntry.ID>()
@@ -160,6 +164,25 @@ struct DictionaryPane: View {
                 }
             }
         }
+        .confirmationDialog("Load default IT dictionary?", isPresented: $confirmingDefaults) {
+            Button("Merge") { store.loadDefaults(mergeStrategy: .skipExisting) }
+            Button("Replace", role: .destructive) { store.loadDefaults(mergeStrategy: .replaceAll) }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Merge adds missing entries. Replace discards your current list.")
+        }
+        .confirmationDialog("Import \(pendingImport?.count ?? 0) terms?", isPresented: importDialogShown) {
+            Button("Add") { if let e = pendingImport { store.addMissing(e) } }
+            Button("Replace", role: .destructive) { if let e = pendingImport { store.replaceAll(e) } }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Add keeps your list and adds terms it doesn't have. Replace discards your current list.")
+        }
+        .alert(errorAlert?.title ?? "", isPresented: errorShown) {
+            Button("OK") {}
+        } message: {
+            Text(errorAlert?.detail ?? "")
+        }
         // Typing starts a new correction; clearing the fields after a save keeps the message.
         .onChange(of: draft.wrong) { _, new in if !new.isEmpty { feedback = nil; removed = nil } }
         .onChange(of: right) { _, new in if !new.isEmpty { feedback = nil; removed = nil } }
@@ -183,7 +206,7 @@ struct DictionaryPane: View {
     private func focusDraft() {
         right = ""
         searchText = ""
-        DispatchQueue.main.async { correctionFocus = draft.wrong.isEmpty ? .wrong : .right }
+        Task { @MainActor in correctionFocus = draft.wrong.isEmpty ? .wrong : .right }
     }
 
     private func saveCorrection() {
@@ -230,7 +253,7 @@ struct DictionaryPane: View {
             .help("Delete the selected terms")
 
             Menu {
-                Button("Load Default Dictionary…", action: confirmLoadDefaults)
+                Button("Load Default Dictionary…") { confirmingDefaults = true }
                     .disabled(!store.hasSeed(for: store.activeLanguage))
                 Divider()
                 Button("Import…", action: importJSON)
@@ -280,18 +303,12 @@ struct DictionaryPane: View {
         feedback = "Removed “\(entry.canonical)”."
     }
 
-    private func confirmLoadDefaults() {
-        let alert = NSAlert()
-        alert.messageText = "Load default IT dictionary?"
-        alert.informativeText = "Merge adds missing entries. Replace discards your current list."
-        alert.addButton(withTitle: "Merge")
-        alert.addButton(withTitle: "Replace")
-        alert.addButton(withTitle: "Cancel")
-        switch alert.runModal() {
-        case .alertFirstButtonReturn:  store.loadDefaults(mergeStrategy: .skipExisting)
-        case .alertSecondButtonReturn: store.loadDefaults(mergeStrategy: .replaceAll)
-        default: break
-        }
+    private var importDialogShown: Binding<Bool> {
+        Binding(get: { pendingImport != nil }, set: { if !$0 { pendingImport = nil } })
+    }
+
+    private var errorShown: Binding<Bool> {
+        Binding(get: { errorAlert != nil }, set: { if !$0 { errorAlert = nil } })
     }
 
     private func importJSON() {
@@ -307,25 +324,11 @@ struct DictionaryPane: View {
                       "It isn't a Speak! dictionary export. (\(error.localizedDescription))")
             return
         }
-        let alert = NSAlert()
-        alert.messageText = "Import \(entries.count) terms?"
-        alert.informativeText = "Add keeps your list and adds terms it doesn't have. Replace discards your current list."
-        alert.addButton(withTitle: "Add")
-        alert.addButton(withTitle: "Replace")
-        alert.addButton(withTitle: "Cancel")
-        switch alert.runModal() {
-        case .alertFirstButtonReturn:  store.addMissing(entries)
-        case .alertSecondButtonReturn: store.replaceAll(entries)
-        default: break
-        }
+        pendingImport = entries
     }
 
     private func showError(_ title: String, _ detail: String) {
-        let alert = NSAlert()
-        alert.alertStyle = .warning
-        alert.messageText = title
-        alert.informativeText = detail
-        alert.runModal()
+        errorAlert = (title, detail)
     }
 
     private func exportJSON() {

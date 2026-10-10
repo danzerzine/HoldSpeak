@@ -4,6 +4,7 @@ import SwiftUI
 /// does, where to recognise speech, permissions (checked on their own while the
 /// model downloads), and a first dictation to see it work.
 struct OnboardingView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ObservedObject var modelsVM: ModelsViewModel
     @ObservedObject private var prefs = PreferencesStore.shared
     @ObservedObject private var status = AppStatus.shared
@@ -62,7 +63,7 @@ struct OnboardingView: View {
         }
         .frame(width: 600, height: 470)
         .preferredColorScheme(prefs.appTheme.colorScheme)
-        .animation(DS.reduceMotion ? nil : .easeInOut(duration: 0.2), value: step)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: step)
     }
 
     // MARK: Steps
@@ -216,7 +217,7 @@ struct OnboardingView: View {
             }
             .padding(.top, DS.s3)
         }
-        .onAppear { DispatchQueue.main.async { tryFocused = true } }
+        .onAppear { Task { @MainActor in tryFocused = true } }
     }
 
     private func heading(_ title: String, _ text: String) -> some View {

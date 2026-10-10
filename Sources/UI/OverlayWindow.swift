@@ -11,7 +11,7 @@ final class OverlayWindow {
     private let model = HUDModel.shared
     /// Bumped by every show so a stale hide doesn't order out newer content.
     private var generation = 0
-    private var flashHide: DispatchWorkItem?
+    private var flashHide: Task<Void, Never>?
 
     private static let size = NSSize(width: 640, height: 120)
     /// Gap between the menu bar icon and the pill.
@@ -56,9 +56,11 @@ final class OverlayWindow {
     /// Shows a message for `seconds`, then hides.
     func flash(_ content: HUDContent, anchor: CGRect?, screen: NSScreen?, seconds: Double) {
         show(content, anchor: anchor, screen: screen)
-        let hide = DispatchWorkItem { [weak self] in self?.hide() }
-        flashHide = hide
-        DispatchQueue.main.asyncAfter(deadline: .now() + seconds, execute: hide)
+        flashHide = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(seconds))
+            guard !Task.isCancelled else { return }
+            self?.hide()
+        }
     }
 
     /// Switches the content in place, if the HUD is up.
@@ -74,7 +76,8 @@ final class OverlayWindow {
         let hiding = generation
         model.shown = false
         // Let the retract animation finish before the panel goes away.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+        Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(400))
             guard let self, self.generation == hiding, !self.model.shown else { return }
             self.panel.orderOut(nil)
         }

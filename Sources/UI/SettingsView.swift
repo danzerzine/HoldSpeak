@@ -319,6 +319,7 @@ private struct GeneralPane: View {
     @ObservedObject private var prefs = PreferencesStore.shared
     @ObservedObject private var status = AppStatus.shared
     @ObservedObject private var updater = AppUpdater.shared
+    @State private var confirmingReset = false
 
     var body: some View {
         Form {
@@ -376,7 +377,7 @@ private struct GeneralPane: View {
 
             Section {
                 LabeledContent {
-                    Button(action: confirmReset) { Text("Reset…").foregroundStyle(DS.tally) }
+                    Button { confirmingReset = true } label: { Text("Reset…").foregroundStyle(DS.tally) }
                 } label: {
                     RowLabel("Statistics", "Dictations and words per minute in the menu")
                 }
@@ -385,6 +386,12 @@ private struct GeneralPane: View {
         .formStyle(.grouped)
         // The window colour behind the groups, as under the pane header.
         .scrollContentBackground(.hidden)
+        .confirmationDialog("Reset statistics?", isPresented: $confirmingReset) {
+            Button("Reset", role: .destructive, action: onResetMetrics)
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Dictation counts and words per minute in the menu start from zero. History is kept.")
+        }
     }
 
     private var buildNumber: String {
@@ -399,15 +406,6 @@ private struct GeneralPane: View {
 
     private func checkForUpdates() {
         updater.checkForUpdates()
-    }
-
-    private func confirmReset() {
-        let alert = NSAlert()
-        alert.messageText = "Reset statistics?"
-        alert.informativeText = "Dictation counts and words per minute in the menu start from zero. History is kept."
-        alert.addButton(withTitle: "Reset")
-        alert.addButton(withTitle: "Cancel")
-        if alert.runModal() == .alertFirstButtonReturn { onResetMetrics() }
     }
 
     /// `.requiresApproval` counts as on: the item is registered, the user just has
@@ -548,6 +546,7 @@ private struct RecognitionPane: View {
     @ObservedObject var modelsVM: ModelsViewModel
     @ObservedObject private var prefs = PreferencesStore.shared
     @State private var inputDevices: [InputDevice.Info] = []
+    @State private var confirmingDelete = false
 
     var body: some View {
         Form {
@@ -598,9 +597,14 @@ private struct RecognitionPane: View {
         .formStyle(.grouped)
         // The window colour behind the groups, as under the pane header.
         .scrollContentBackground(.hidden)
-        .onAppear {
-            loadInputDevices()
-            modelsVM.refreshManagedSize()
+        .onAppear { modelsVM.refreshManagedSize() }
+        .task { inputDevices = await Task.detached { InputDevice.inputDevices() }.value }
+        .confirmationDialog("Delete downloaded models?", isPresented: $confirmingDelete) {
+            Button("Delete", role: .destructive) { modelsVM.deleteManagedModels() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            let size = ByteCountFormatter.string(fromByteCount: modelsVM.managedBytes, countStyle: .file)
+            Text("Frees \(size). Only models Speak! downloaded are removed — copies from MacWhisper or other apps stay. You can download a model again at any time.")
         }
     }
 
@@ -620,7 +624,7 @@ private struct RecognitionPane: View {
             } else if modelsVM.isLocated(prefs.modelID) {
                 LabeledContent {
                     if modelsVM.managedBytes > 0 {
-                        Button(action: confirmDeleteModels) { Text("Delete…").foregroundStyle(DS.tally) }
+                        Button { confirmingDelete = true } label: { Text("Delete…").foregroundStyle(DS.tally) }
                     }
                 } label: {
                     StatusRowLabel(status: StatusDot(text: "Downloaded", color: DS.ok), caption: modelsVM.managedBytes > 0
@@ -659,31 +663,12 @@ private struct RecognitionPane: View {
         return m.isParakeet ? name : "Whisper \(name)"
     }
 
-    private func loadInputDevices() {
-        DispatchQueue.global(qos: .userInitiated).async {
-            let devices = InputDevice.inputDevices()
-            DispatchQueue.main.async { inputDevices = devices }
-        }
-    }
-
     private func inputLabel(_ selection: InputSelection) -> String {
         switch selection {
         case .systemDefault: return "System default"
         case .avoidBluetooth: return "Built-in if default is Bluetooth"
         case .device(let uid):
             return inputDevices.first(where: { $0.uid == uid })?.name ?? "Disconnected device"
-        }
-    }
-
-    private func confirmDeleteModels() {
-        let size = ByteCountFormatter.string(fromByteCount: modelsVM.managedBytes, countStyle: .file)
-        let alert = NSAlert()
-        alert.messageText = "Delete downloaded models?"
-        alert.informativeText = "Frees \(size). Only models Speak! downloaded are removed — copies from MacWhisper or other apps stay. You can download a model again at any time."
-        alert.addButton(withTitle: "Delete")
-        alert.addButton(withTitle: "Cancel")
-        if alert.runModal() == .alertFirstButtonReturn {
-            modelsVM.deleteManagedModels()
         }
     }
 }
@@ -719,6 +704,7 @@ private struct HistoryPane: View {
     let onClear: () -> Void
     @State private var rows: [TranscriptionRecord] = []
     @State private var selection = Set<TranscriptionRecord.ID>()
+    @State private var confirmingClear = false
 
     private var filtered: [TranscriptionRecord] {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
@@ -773,7 +759,7 @@ private struct HistoryPane: View {
                     .font(DS.callout)
                     .foregroundStyle(.secondary)
                 Spacer()
-                Button(action: confirmClear) {
+                Button { confirmingClear = true } label: {
                     Text("Clear History…").foregroundStyle(rows.isEmpty ? Color.secondary : DS.tally)
                 }
                 .controlSize(.small)
@@ -791,6 +777,15 @@ private struct HistoryPane: View {
         .padding(.bottom, DS.s5)
         .onAppear(perform: load)
         .onReceive(NotificationCenter.default.publisher(for: .historyDidChange)) { _ in load() }
+        .confirmationDialog("Clear all dictation history?", isPresented: $confirmingClear) {
+            Button("Clear", role: .destructive) {
+                onClear()
+                rows = []
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This can’t be undone. Statistics in the menu are kept.")
+        }
     }
 
     private func load() {
@@ -802,18 +797,6 @@ private struct HistoryPane: View {
         guard !text.isEmpty else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
-    }
-
-    private func confirmClear() {
-        let alert = NSAlert()
-        alert.messageText = "Clear all dictation history?"
-        alert.informativeText = "This can’t be undone. Statistics in the menu are kept."
-        alert.addButton(withTitle: "Clear")
-        alert.addButton(withTitle: "Cancel")
-        if alert.runModal() == .alertFirstButtonReturn {
-            onClear()
-            rows = []
-        }
     }
 }
 

@@ -33,9 +33,8 @@ final class ModelsViewModel: ObservableObject {
     }
 
     func refreshManagedSize() {
-        DispatchQueue.global(qos: .utility).async {
-            let bytes = ModelManager.shared.managedBytes()
-            DispatchQueue.main.async { self.managedBytes = bytes }
+        Task {
+            managedBytes = await Task.detached(priority: .utility) { ModelManager.shared.managedBytes() }.value
         }
     }
 

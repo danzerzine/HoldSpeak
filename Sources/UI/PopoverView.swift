@@ -38,7 +38,8 @@ final class PopoverViewModel: ObservableObject {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(record.cleanedText, forType: .string)
         toast = "Copied"
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.1) { [weak self] in
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(1.1))
             if self?.toast == "Copied" { self?.toast = nil }
         }
     }
@@ -82,6 +83,7 @@ struct PopoverView: View {
         .padding(.vertical, 6)
         .frame(width: DS.popoverWidth)
         .overlay(alignment: .top) { toast }
+        .animation(.easeOut(duration: 0.15), value: vm.toast)
         .modifier(PopoverChrome())
         .preferredColorScheme(prefs.appTheme.colorScheme)
     }
@@ -313,9 +315,8 @@ private struct RecentRow: View {
     let onFix: () -> Void
     @State private var hover = false
 
-    private var fixes: [(canonical: String, heard: String)] { DictionaryMarks.fixes(in: record) }
-
     var body: some View {
+        let fixes = DictionaryMarks.fixes(in: record)
         VStack(alignment: .leading, spacing: 3) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(DictionaryMarks.marked(record.cleanedText, fixes.map(\.canonical)))
@@ -366,7 +367,7 @@ private struct FailedRow: View {
         VStack(alignment: .leading, spacing: 3) {
             // Same layout as a Recent row: time top right, the action under it.
             HStack(alignment: .firstTextBaseline) {
-                Text("\(failed.seconds / 60):\(String(format: "%02d", failed.seconds % 60)) of audio")
+                Text("\(Duration.seconds(failed.seconds).formatted(.time(pattern: .minuteSecond))) of audio")
                     .foregroundStyle(.secondary)
                 Spacer()
                 Text(RelativeTime.short(Int64(failed.at.timeIntervalSince1970 * 1000)))

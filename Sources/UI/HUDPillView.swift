@@ -37,7 +37,7 @@ final class HUDAmplitudeModel: ObservableObject {
         samples = samples.map { _ in 0 }
         lastTick = CACurrentMediaTime()
         let timer = Timer(timeInterval: 1.0 / 60, repeats: true) { [weak self] _ in
-            Task { @MainActor in
+            MainActor.assumeIsolated {
                 guard let self else { return }
                 let now = CACurrentMediaTime()
                 self.tick(dt: min(now - self.lastTick, 0.1))
@@ -112,6 +112,7 @@ final class HUDModel: ObservableObject {
 /// dropping out of the icon (or rising) as it appears.
 struct HUDView: View {
     @ObservedObject private var model = HUDModel.shared
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HUDPlacement(anchorX: model.anchorX, atTop: model.position == .underMenuBarIcon) {
@@ -120,12 +121,12 @@ struct HUDView: View {
                     .transition(transition)
             }
         }
-        .animation(DS.reduceMotion ? .easeOut(duration: 0.15) : DS.hudSpring, value: model.shown)
-        .animation(DS.reduceMotion ? nil : DS.hudSpring, value: model.content)
+        .animation(reduceMotion ? .easeOut(duration: 0.15) : DS.hudSpring, value: model.shown)
+        .animation(reduceMotion ? nil : DS.hudSpring, value: model.content)
     }
 
     private var transition: AnyTransition {
-        if DS.reduceMotion { return .opacity }
+        if reduceMotion { return .opacity }
         return model.position == .underMenuBarIcon
             ? .modifier(active: HUDDrop(scaleX: 0.6, scaleY: 0.4, y: -14, anchor: .top, opacity: 0),
                         identity: HUDDrop(scaleX: 1, scaleY: 1, y: 0, anchor: .top, opacity: 1))
@@ -299,7 +300,7 @@ private struct ElapsedMeta: View {
         .font(DS.detail.monospacedDigit())
     }
 
-    static func clock(_ s: Int) -> String { "\(s / 60):" + String(format: "%02d", s % 60) }
+    static func clock(_ s: Int) -> String { Duration.seconds(s).formatted(.time(pattern: .minuteSecond)) }
 }
 
 /// Level bars, newest at the right, older ones fading out (concept canvas: 24 bars,
@@ -329,9 +330,10 @@ private struct Waveform: View {
 private struct Spinner: View {
     let primary: Color
     let track: Color
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        TimelineView(.animation(paused: DS.reduceMotion)) { ctx in
+        TimelineView(.animation(paused: reduceMotion)) { ctx in
             let t = ctx.date.timeIntervalSinceReferenceDate
             ZStack {
                 Circle().stroke(track, lineWidth: 2)
