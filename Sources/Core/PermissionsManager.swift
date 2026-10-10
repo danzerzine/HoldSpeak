@@ -17,7 +17,7 @@ public struct Permissions: Equatable {
     }
 }
 
-public final class PermissionsManager {
+public final class PermissionsManager: Sendable {
     public static let shared = PermissionsManager()
     private init() {}
 

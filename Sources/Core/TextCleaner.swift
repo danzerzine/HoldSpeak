@@ -124,7 +124,8 @@ public enum TextCleaner {
 
     /// Terminology regexes keyed by variant + case sensitivity. A variant's regex
     /// depends only on those two, so edits to the terminology never invalidate it.
-    private static var variantRegexCache: [String: NSRegularExpression] = [:]
+    /// Guarded by `variantRegexLock`.
+    nonisolated(unsafe) private static var variantRegexCache: [String: NSRegularExpression] = [:]
     private static let variantRegexLock = NSLock()
 
     private static func variantRegex(_ variant: String, caseSensitive: Bool) -> NSRegularExpression? {

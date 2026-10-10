@@ -1,5 +1,9 @@
 import Foundation
 import WhisperKit
+
+/// WhisperKit isn't Sendable. The one instance is created and used only from
+/// WhisperTranscriber on the main actor; its async calls hop off and come back.
+extension WhisperKit: @retroactive @unchecked Sendable {}
 import FluidAudio
 
 /// Local recognition: WhisperKit, or FluidAudio for Parakeet models. Audio arrives

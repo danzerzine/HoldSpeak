@@ -1,6 +1,6 @@
 import Foundation
 
-public struct Metrics: Equatable {
+public struct Metrics: Equatable, Sendable {
     /// Dictations since local midnight, and over the whole previous day.
     public let dictationsToday: Int
     public let dictationsYesterday: Int

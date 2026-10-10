@@ -68,7 +68,7 @@ public enum PrimaryLanguage: String, CaseIterable, Identifiable {
     }
 }
 
-public enum WhisperModelID: String, CaseIterable, Identifiable {
+public enum WhisperModelID: String, CaseIterable, Identifiable, Sendable {
     case tiny = "openai_whisper-tiny"
     case small = "openai_whisper-small"
     case turbo = "openai_whisper-large-v3-v20240930"

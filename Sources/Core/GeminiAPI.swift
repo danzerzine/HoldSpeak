@@ -1,6 +1,6 @@
 import Foundation
 
-public enum GeminiModelID: String, CaseIterable, Identifiable {
+public enum GeminiModelID: String, CaseIterable, Identifiable, Sendable {
     case transcribe = "gemini-3.5-transcribe"
     case flashLite = "gemini-3.5-flash-lite"
     public var id: String { rawValue }
@@ -181,7 +181,7 @@ public enum GeminiKeyCheck: Equatable {
     case valid, invalid, unreachable
 }
 
-public struct GeminiClient {
+public struct GeminiClient: Sendable {
     private let session: URLSession
 
     public init(session: URLSession = .shared) {

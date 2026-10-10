@@ -2,7 +2,7 @@ import Foundation
 import WhisperKit
 import FluidAudio
 
-public final class ModelManager {
+public final class ModelManager: Sendable {
     public static let shared = ModelManager()
     private init() {}
 
@@ -87,7 +87,7 @@ public final class ModelManager {
     }
 
     public func download(_ id: WhisperModelID,
-                         progress: @escaping (Double) -> Void) async throws -> URL {
+                         progress: @escaping @Sendable (Double) -> Void) async throws -> URL {
         try FileManager.default.createDirectory(at: managedDirectory(), withIntermediateDirectories: true)
         if id.isParakeet {
             return try await AsrModels.download(

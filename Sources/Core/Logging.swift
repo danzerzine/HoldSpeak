@@ -6,7 +6,7 @@ private let logQueue = DispatchQueue(label: "com.timmal.holdspeak.log", qos: .ut
 private let logPath = AppPaths.logFile
 private let logMaxBytes: UInt64 = 2 * 1024 * 1024
 /// Opened lazily on logQueue; nil until the first write (or after a failed open).
-private var logHandle: FileHandle?
+nonisolated(unsafe) private var logHandle: FileHandle?
 
 /// Writes to Speak.log only, not the system log, which keeps entries far longer.
 public func pttLog(_ msg: String) {

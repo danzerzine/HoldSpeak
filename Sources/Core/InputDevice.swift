@@ -43,7 +43,7 @@ public enum InputDevice {
         return id
     }
 
-    public struct Info: Identifiable, Hashable {
+    public struct Info: Identifiable, Hashable, Sendable {
         public let id: AudioDeviceID
         public let uid: String
         public let name: String

@@ -827,7 +827,7 @@ final class PreferencesWindowController: NSWindowController {
         for name in [NSWindow.didResizeNotification, NSWindow.didBecomeKeyNotification,
                      NSWindow.didResignKeyNotification, NSWindow.didExitFullScreenNotification] {
             NotificationCenter.default.addObserver(forName: name, object: win, queue: .main) { [weak self] _ in
-                self?.placeTrafficLights()
+                MainActor.assumeIsolated { self?.placeTrafficLights() }
             }
         }
     }

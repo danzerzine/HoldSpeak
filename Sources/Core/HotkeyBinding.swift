@@ -2,9 +2,9 @@ import Foundation
 
 import Carbon.HIToolbox
 
-public enum HotkeyKind: String, Codable { case modifier, key }
+public enum HotkeyKind: String, Codable, Sendable { case modifier, key }
 
-public struct HotkeyBinding: Codable, Equatable {
+public struct HotkeyBinding: Codable, Equatable, Sendable {
     public var kind: HotkeyKind
     /// For `.modifier`: NX device-dependent bit (low 16 of CGEventFlags).
     public var deviceBit: UInt64
