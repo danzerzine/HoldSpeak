@@ -47,6 +47,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Developer check: SPEAK_AUDIO_STRESS=200 starts capture and stops it 0–400 ms later
+    /// that many times, like a quick hotkey tap, then quits. A crash is the failure.
+    private func runAudioStress(_ count: Int) {
+        Task { @MainActor in
+            for i in 1...count {
+                recorder.start(input: PreferencesStore.shared.inputSelection)
+                try? await Task.sleep(for: .milliseconds(Int.random(in: 0...400)))
+                await withCheckedContinuation { c in recorder.stop { c.resume() } }
+                if i % 25 == 0 { pttLog("stress: \(i)/\(count)") }
+                try? await Task.sleep(for: .milliseconds(Int.random(in: 0...300)))
+            }
+            pttLog("stress: done")
+            try? await Task.sleep(nanoseconds: 500_000_000)  // let the log queue flush
+            NSApp.terminate(nil)
+        }
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         Self.migrateFromHoldSpeak()
@@ -67,6 +84,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             demo ? 0 : Int64(PreferencesStore.shared.metricsResetAtMs)
         })
         recorder = AudioRecorder()
+        if let n = env["SPEAK_AUDIO_STRESS"].flatMap(Int.init) {
+            runAudioStress(n)
+            return
+        }
         // Off main: CoreAudio calls can block for a long time after sleep/wake.
         DispatchQueue.global(qos: .utility).async { OutputDucker().restoreAfterCrash() }
         engine = TranscriptionEngine()

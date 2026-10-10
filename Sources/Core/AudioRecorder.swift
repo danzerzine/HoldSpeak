@@ -271,9 +271,11 @@ private final class Capture: @unchecked Sendable {
 
     private func teardown() {
         guard isRecording, let engine else { isRecording = false; return }
+        // Stop IO before removing the tap (Apple's order): removing it first while the HAL
+        // IO thread was still starting crashed inside CoreAudio on a quick tap (2026-10-10).
         _ = HSCatchObjCException({
-            engine.inputNode.removeTap(onBus: 0)
             engine.stop()
+            engine.inputNode.removeTap(onBus: 0)
         }, nil)
         isRecording = false
     }
