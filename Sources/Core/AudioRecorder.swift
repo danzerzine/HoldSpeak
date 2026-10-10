@@ -228,7 +228,7 @@ private final class Capture: @unchecked Sendable {
                                                         channels: hwFormat.channelCount)
         }
 
-        // Only the audio tap thread touches these (the tap callback is serial).
+        // Only the audio tap thread touches it (the tap callback is serial).
         nonisolated(unsafe) var tapCount = 0
         var objcError: NSError?
         let installed = HSCatchObjCException({

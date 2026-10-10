@@ -244,6 +244,8 @@ struct StatusItemView: View {
     }
 }
 
+// LevelBars and LoadingRing read DS.reduceMotion, not the environment: they are
+// rendered into the status item image by ImageRenderer, outside any window.
 private struct LevelBars: View {
     let levels: [CGFloat]
     let shimmer: Bool

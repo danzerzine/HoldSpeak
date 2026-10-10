@@ -84,7 +84,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             demo ? 0 : Int64(PreferencesStore.shared.metricsResetAtMs)
         })
         recorder = AudioRecorder()
-        if let n = env["SPEAK_AUDIO_STRESS"].flatMap(Int.init) {
+        if let n = env["SPEAK_AUDIO_STRESS"].flatMap(Int.init), n > 0 {
             runAudioStress(n)
             return
         }
