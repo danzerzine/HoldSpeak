@@ -2,12 +2,43 @@ import SwiftUI
 import AppKit
 import Carbon.HIToolbox
 
+/// The one shortcut recorder listening for keys. Two recorders sit side by side in
+/// Settings: starting one stops the other, and only the owner unpauses the hotkey.
+@MainActor
+final class HotkeyCapture: ObservableObject {
+    static let shared = HotkeyCapture()
+    /// Which hotkey is being recorded: false the first, true the second, nil none.
+    @Published private(set) var target: Bool?
+    private var monitor: Any?
+
+    func start(second: Bool, handler: @escaping (NSEvent) -> NSEvent?) {
+        stop()
+        target = second
+        HotkeyMonitor.isPaused = true
+        monitor = NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged, .keyDown], handler: handler)
+    }
+
+    /// Stops the recorder for `second`; a call from a recorder that doesn't own the capture does nothing.
+    func stop(second: Bool) {
+        guard target == second else { return }
+        stop()
+    }
+
+    private func stop() {
+        if let m = monitor { NSEvent.removeMonitor(m) }
+        monitor = nil
+        guard target != nil else { return }
+        target = nil
+        HotkeyMonitor.isPaused = false
+    }
+}
+
 struct HotkeyRecorderView: View {
     @ObservedObject var prefs = PreferencesStore.shared
+    @ObservedObject private var capture = HotkeyCapture.shared
     /// Edits the second hotkey instead of the first.
     var second = false
-    @State private var recording = false
-    @State private var monitor: Any?
+    private var recording: Bool { capture.target == second }
     @State private var previousDeviceBits: UInt64 = 0
     @State private var rejected = false
 
@@ -52,11 +83,9 @@ struct HotkeyRecorderView: View {
     }
 
     private func start() {
-        recording = true
         rejected = false
-        HotkeyMonitor.isPaused = true
         previousDeviceBits = UInt64(NSEvent.modifierFlags.rawValue) & 0xFFFF
-        monitor = NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged, .keyDown]) { event in
+        capture.start(second: second) { event in
             if let b = bindingFrom(event) {
                 binding = b
                 stop()
@@ -68,10 +97,7 @@ struct HotkeyRecorderView: View {
     }
 
     private func stop() {
-        if let m = monitor { NSEvent.removeMonitor(m) }
-        monitor = nil
-        recording = false
-        HotkeyMonitor.isPaused = false
+        capture.stop(second: second)
     }
 
     private static func isFunctionKey(_ kc: UInt16) -> Bool {
