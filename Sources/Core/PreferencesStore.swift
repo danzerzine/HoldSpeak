@@ -173,20 +173,30 @@ public final class PreferencesStore: ObservableObject {
     public var geminiAPIKey: String? {
         get {
             if let cached = cachedGeminiKey { return cached }
-            let key = Keychain.string(for: Self.geminiKeyAccount)
+            // A failed read isn't cached: the next dictation asks the Keychain again.
+            guard let key = try? Keychain.read(Self.geminiKeyAccount) else { return nil }
             cachedGeminiKey = .some(key)
             return key
         }
-        set {
-            objectWillChange.send()
-            if let newValue, !newValue.isEmpty {
-                Keychain.set(newValue, for: Self.geminiKeyAccount)
-                cachedGeminiKey = .some(newValue)
-            } else {
-                Keychain.delete(Self.geminiKeyAccount)
-                cachedGeminiKey = .some(nil)
+        set { saveGeminiAPIKey(newValue) }
+    }
+
+    /// False when the Keychain refused the key: nothing is cached, so the app
+    /// doesn't work this session and then lose the key at relaunch.
+    @discardableResult
+    public func saveGeminiAPIKey(_ newValue: String?) -> Bool {
+        objectWillChange.send()
+        if let newValue, !newValue.isEmpty {
+            guard Keychain.set(newValue, for: Self.geminiKeyAccount) else {
+                cachedGeminiKey = nil
+                return false
             }
+            cachedGeminiKey = .some(newValue)
+        } else {
+            Keychain.delete(Self.geminiKeyAccount)
+            cachedGeminiKey = .some(nil)
         }
+        return true
     }
 
     public var hasGeminiKey: Bool { geminiAPIKey?.isEmpty == false }

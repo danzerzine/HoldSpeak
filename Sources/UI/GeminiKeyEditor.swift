@@ -3,7 +3,7 @@ import SwiftUI
 /// Checks a Gemini API key with Google before saving it to the Keychain.
 @MainActor
 final class GeminiKeyModel: ObservableObject {
-    enum Check { case idle, checking, invalid, unreachable }
+    enum Check { case idle, checking, invalid, unreachable, saveFailed }
     @Published var draft = ""
     @Published var check: Check = .idle
 
@@ -15,6 +15,7 @@ final class GeminiKeyModel: ObservableObject {
         switch check {
         case .invalid:     return "Google rejected this key"
         case .unreachable: return "Couldn’t reach Google — check your connection"
+        case .saveFailed:  return "Couldn’t save the key to the Keychain"
         default:           return nil
         }
     }
@@ -26,7 +27,10 @@ final class GeminiKeyModel: ObservableObject {
         Task { @MainActor in
             switch await GeminiClient().check(apiKey: key) {
             case .valid:
-                PreferencesStore.shared.geminiAPIKey = key
+                guard PreferencesStore.shared.saveGeminiAPIKey(key) else {
+                    check = .saveFailed
+                    return
+                }
                 draft = ""
                 check = .idle
             case .invalid:

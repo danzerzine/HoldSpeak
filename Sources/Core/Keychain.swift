@@ -14,12 +14,22 @@ public enum Keychain {
     }
 
     public static func string(for account: String) -> String? {
+        try? read(account)
+    }
+
+    /// The stored value, nil when there is none; throws the status when the Keychain
+    /// can't answer (locked, access denied), so callers don't take that for "no key".
+    public static func read(_ account: String) throws -> String? {
         var q = query(account)
         q[kSecReturnData as String] = true
         q[kSecMatchLimit as String] = kSecMatchLimitOne
         var item: CFTypeRef?
-        guard SecItemCopyMatching(q as CFDictionary, &item) == errSecSuccess,
-              let data = item as? Data else { return nil }
+        let status = SecItemCopyMatching(q as CFDictionary, &item)
+        if status == errSecItemNotFound { return nil }
+        guard status == errSecSuccess, let data = item as? Data else {
+            pttLog("Keychain read failed: \(status)")
+            throw KeychainError(status: status)
+        }
         return String(data: data, encoding: .utf8)
     }
 
@@ -42,6 +52,11 @@ public enum Keychain {
     }
 
     public static func delete(_ account: String) {
-        SecItemDelete(query(account) as CFDictionary)
+        let status = SecItemDelete(query(account) as CFDictionary)
+        if status != errSecSuccess, status != errSecItemNotFound { pttLog("Keychain delete failed: \(status)") }
     }
+}
+
+public struct KeychainError: Error, Equatable {
+    public let status: OSStatus
 }
