@@ -2,7 +2,8 @@ import SwiftUI
 import AppKit
 
 @MainActor
-final class PopoverViewModel: ObservableObject {
+@Observable
+final class PopoverViewModel {
     struct FailedDictation: Equatable {
         let title: String
         /// Length of the kept audio.
@@ -10,19 +11,19 @@ final class PopoverViewModel: ObservableObject {
         var at = Date()
     }
 
-    @Published var metrics: Metrics = .zero
-    @Published var recent: [TranscriptionRecord] = []
+    var metrics: Metrics = .zero
+    var recent: [TranscriptionRecord] = []
     /// Version of an update Sparkle found and the user hasn't installed yet.
-    @Published var update: String?
+    var update: String?
     /// The last dictation's failure while its audio is kept for a retry.
-    @Published var failedDictation: FailedDictation?
-    @Published var toast: String?
-    var onRetry: (() -> Void)?
+    var failedDictation: FailedDictation?
+    var toast: String?
+    @ObservationIgnored var onRetry: (() -> Void)?
 
     static let recentVisible = 4
 
-    private let store: HistoryStoring
-    private let metricsEngine: MetricsComputing
+    @ObservationIgnored private let store: HistoryStoring
+    @ObservationIgnored private let metricsEngine: MetricsComputing
 
     init(store: HistoryStoring, metricsEngine: MetricsComputing) {
         self.store = store
@@ -48,7 +49,7 @@ final class PopoverViewModel: ObservableObject {
 /// The menu bar popover (concept section "Поповер"): can I talk right now, what
 /// did I just dictate, and the usual menu items.
 struct PopoverView: View {
-    @ObservedObject var vm: PopoverViewModel
+    var vm: PopoverViewModel
     @ObservedObject private var prefs = PreferencesStore.shared
     @ObservedObject private var status = AppStatus.shared
 

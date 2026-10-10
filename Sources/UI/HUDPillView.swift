@@ -1,28 +1,30 @@
 import SwiftUI
 
 @MainActor
-final class HUDAmplitudeModel: ObservableObject {
+@Observable
+final class HUDAmplitudeModel {
     /// One bar per sample, ~1.5 s of history at `sampleStep`.
     static let sampleCount = 26
     private static let sampleStep: Double = 0.06
 
     /// Level history for the waveform, 0...1, oldest first.
-    @Published private(set) var samples = [CGFloat](repeating: 0, count: sampleCount)
+    private(set) var samples = [CGFloat](repeating: 0, count: sampleCount)
     /// How far (0...1 of one sample) the waveform has scrolled since the last
     /// sample, so it glides left instead of jumping.
-    @Published private(set) var scroll: CGFloat = 0
-    /// When the current recording started, for the elapsed time in the HUD.
-    private(set) var startedAt = Date()
+    private(set) var scroll: CGFloat = 0
+    /// When the current recording started, for the elapsed time in the HUD. Not tracked:
+    /// ElapsedMeta re-reads it every 0.25 s, and tracking would redraw it at the 60 Hz tick.
+    @ObservationIgnored private(set) var startedAt = Date()
 
     static let shared = HUDAmplitudeModel()
 
-    private var timer: Timer?
-    private var lastTick: CFTimeInterval = 0
-    private var sinceSample: Double = 0
+    @ObservationIgnored private var timer: Timer?
+    @ObservationIgnored private var lastTick: CFTimeInterval = 0
+    @ObservationIgnored private var sinceSample: Double = 0
     /// Light EMA of the normalised mic level; smooths buffer-to-buffer jitter.
-    private var smoothed: Double = 0
+    @ObservationIgnored private var smoothed: Double = 0
     /// Fast attack, slower release: the waveform swells with a word and eases off.
-    private var follower = LevelEnvelope(attack: 0.03, release: 0.12)
+    @ObservationIgnored private var follower = LevelEnvelope(attack: 0.03, release: 0.12)
 
     private init() {}
 
@@ -98,20 +100,21 @@ enum HUDContent: Equatable {
 enum HUDMessageKind: Equatable { case warn, error, lock, loading }
 
 @MainActor
-final class HUDModel: ObservableObject {
+@Observable
+final class HUDModel {
     static let shared = HUDModel()
-    @Published var content: HUDContent = .listening
-    @Published var shown = false
+    var content: HUDContent = .listening
+    var shown = false
     /// Where the pill's centre should be, in panel coordinates (under-icon mode).
-    @Published var anchorX: CGFloat?
-    @Published var position: HUDPosition = .underMenuBarIcon
+    var anchorX: CGFloat?
+    var position: HUDPosition = .underMenuBarIcon
     private init() {}
 }
 
 /// The panel's whole content: the pill placed under the icon or at the bottom,
 /// dropping out of the icon (or rising) as it appears.
 struct HUDView: View {
-    @ObservedObject private var model = HUDModel.shared
+    private let model = HUDModel.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -307,7 +310,7 @@ private struct ElapsedMeta: View {
 /// 2.5 pt wide, 4 pt pitch).
 private struct Waveform: View {
     let color: Color
-    @ObservedObject private var model = HUDAmplitudeModel.shared
+    private let model = HUDAmplitudeModel.shared
 
     var body: some View {
         Canvas { ctx, size in

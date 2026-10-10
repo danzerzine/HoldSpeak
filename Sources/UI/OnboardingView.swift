@@ -5,7 +5,7 @@ import SwiftUI
 /// model downloads), and a first dictation to see it work.
 struct OnboardingView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @ObservedObject var modelsVM: ModelsViewModel
+    var modelsVM: ModelsViewModel
     @ObservedObject private var prefs = PreferencesStore.shared
     @ObservedObject private var status = AppStatus.shared
     @State private var step: Step

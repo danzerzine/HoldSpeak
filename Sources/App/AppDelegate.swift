@@ -141,10 +141,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         handlePermissionsAndStart()
 
-        AppUpdater.shared.$availableVersion
-            .receive(on: RunLoop.main)
-            .sink { [weak self] in self?.popoverVM.update = $0 }
-            .store(in: &cancellables)
+        AppUpdater.shared.onAvailableVersionChange = { [weak self] in self?.popoverVM.update = $0 }
         AppUpdater.shared.start()
     }
 

@@ -5,11 +5,12 @@ import Carbon.HIToolbox
 /// The one shortcut recorder listening for keys. Two recorders sit side by side in
 /// Settings: starting one stops the other, and only the owner unpauses the hotkey.
 @MainActor
-final class HotkeyCapture: ObservableObject {
+@Observable
+final class HotkeyCapture {
     static let shared = HotkeyCapture()
     /// Which hotkey is being recorded: false the first, true the second, nil none.
-    @Published private(set) var target: Bool?
-    private var monitor: Any?
+    private(set) var target: Bool?
+    @ObservationIgnored private var monitor: Any?
 
     func start(second: Bool, handler: @escaping (NSEvent) -> NSEvent?) {
         stop()
@@ -35,7 +36,7 @@ final class HotkeyCapture: ObservableObject {
 
 struct HotkeyRecorderView: View {
     @ObservedObject var prefs = PreferencesStore.shared
-    @ObservedObject private var capture = HotkeyCapture.shared
+    private let capture = HotkeyCapture.shared
     /// Edits the second hotkey instead of the first.
     var second = false
     private var recording: Bool { capture.target == second }

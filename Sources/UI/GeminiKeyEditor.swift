@@ -2,10 +2,11 @@ import SwiftUI
 
 /// Checks a Gemini API key with Google before saving it to the Keychain.
 @MainActor
-final class GeminiKeyModel: ObservableObject {
+@Observable
+final class GeminiKeyModel {
     enum Check { case idle, checking, invalid, unreachable, saveFailed }
-    @Published var draft = ""
-    @Published var check: Check = .idle
+    var draft = ""
+    var check: Check = .idle
 
     static let keyPageURL = URL(string: "https://aistudio.google.com/apikey")!
 
@@ -52,7 +53,7 @@ final class GeminiKeyModel: ObservableObject {
 /// or a field to paste one.
 struct GeminiKeyRow: View {
     @ObservedObject private var prefs = PreferencesStore.shared
-    @StateObject private var model = GeminiKeyModel()
+    @State private var model = GeminiKeyModel()
 
     var body: some View {
         if let key = prefs.geminiAPIKey, !key.isEmpty {
@@ -94,7 +95,7 @@ struct GeminiKeyRow: View {
 /// The same, laid out for the onboarding card.
 struct GeminiKeyField: View {
     @ObservedObject private var prefs = PreferencesStore.shared
-    @StateObject private var model = GeminiKeyModel()
+    @State private var model = GeminiKeyModel()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {

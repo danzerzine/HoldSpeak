@@ -51,7 +51,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
 }
 
 struct SettingsView: View {
-    @ObservedObject var modelsVM: ModelsViewModel
+    var modelsVM: ModelsViewModel
     var historyStore: HistoryStoring
     var onClearHistory: () -> Void
     var onResetMetrics: () -> Void
@@ -318,7 +318,7 @@ private struct GeneralPane: View {
     var onResetMetrics: () -> Void
     @ObservedObject private var prefs = PreferencesStore.shared
     @ObservedObject private var status = AppStatus.shared
-    @ObservedObject private var updater = AppUpdater.shared
+    private let updater = AppUpdater.shared
     @State private var confirmingReset = false
 
     var body: some View {
@@ -543,7 +543,7 @@ private struct ShortcutPane: View {
 // MARK: - Recognition
 
 private struct RecognitionPane: View {
-    @ObservedObject var modelsVM: ModelsViewModel
+    var modelsVM: ModelsViewModel
     @ObservedObject private var prefs = PreferencesStore.shared
     @State private var inputDevices: [InputDevice.Info] = []
     @State private var confirmingDelete = false

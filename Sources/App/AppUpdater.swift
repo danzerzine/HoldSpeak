@@ -10,13 +10,18 @@ import Sparkle
 /// pop a window over the user's work: it shows the banner in the popover
 /// ("gentle reminder"), and the banner's Install opens Sparkle's dialog.
 @MainActor
-final class AppUpdater: NSObject, ObservableObject, SPUUpdaterDelegate, SPUStandardUserDriverDelegate {
+@Observable
+final class AppUpdater: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverDelegate {
     static let shared = AppUpdater()
 
     /// Version of a found update not installed yet; drives the popover banner.
-    @Published private(set) var availableVersion: String?
+    private(set) var availableVersion: String? {
+        didSet { onAvailableVersionChange?(availableVersion) }
+    }
+    /// Set by AppDelegate to mirror `availableVersion` into the popover; called on the main actor.
+    @ObservationIgnored var onAvailableVersionChange: ((String?) -> Void)?
 
-    private lazy var controller = SPUStandardUpdaterController(
+    @ObservationIgnored private lazy var controller = SPUStandardUpdaterController(
         startingUpdater: false, updaterDelegate: self, userDriverDelegate: self)
 
     var lastCheck: Date? { controller.updater.lastUpdateCheckDate }
